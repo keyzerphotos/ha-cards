@@ -45,3 +45,7 @@ hui-element, card-tools.
 
 All mirrored files are unmodified copies of the upstream release builds.
 Licenses remain with their respective projects.
+
+## Eigen pagina's
+
+- `kuga.html` — Ford Kuga-pagina (HTML/JS-prototype met testwaarden, 2026-10-25); wordt straks live gevoed via de HA-API zodra FordPass gekoppeld is. Wordt getoond als iframe in het dashboard `auto-home`.
