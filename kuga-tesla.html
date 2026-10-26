@@ -198,6 +198,8 @@
   #btnDoConnect{background:var(--groen); color:#fff}
   #btnCancelConnect{border:1px solid var(--lijn); color:var(--sub)}
   #connStatus{font-size:12px; color:var(--amber); margin-top:12px; min-height:16px; line-height:1.45}
+.grijs{opacity:.38}
+#mCost{cursor:pointer}
 </style>
 </head>
 <body>
@@ -590,7 +592,7 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('zichtbaar'), 2200);
 }
 function zetSchakelaar(id, aan){ $(id).classList.toggle('aan', aan); }
-function render(){
+function renderHeader(){
   $('socPct').textContent = state.soc;
   $('rangeKm').textContent = state.rangeKm + ' km';
   $('battIconFill').setAttribute('width', (20.4 * state.soc / 100).toFixed(1));
@@ -609,6 +611,8 @@ function render(){
   $('qClimate').classList.toggle('actief', state.climateOn);
   $('qCharge').classList.toggle('actief', state.charging);
   $('qTrunk').classList.toggle('actief', state.trunkOpen);
+}
+function renderLaden(){
   $('chargeState').textContent = state.charging ? 'Laadt' : state.plugged ? 'Gepauzeerd' : 'Niet aangesloten';
   $('chargeState').classList.toggle('groen', state.charging);
   $('chargeSub').textContent = state.addedKwh.toString().replace('.', ',') + ' kWh toegevoegd tijdens de laatste laadsessie';
@@ -619,6 +623,9 @@ function render(){
   const lr = $('limitRange'), pct = (state.limit - 50) / 50 * 100;
   lr.style.background = 'linear-gradient(90deg, var(--groen) ' + pct + '%, var(--lijn) ' + pct + '%)';
   $('portBtn').textContent = state.plugged ? 'Ontgrendel laadpoort' : 'Sluit laadkabel aan';
+  $('mCost').textContent = 'DEZE SESSIE · €' + (state.addedKwh * state.tarief).toFixed(2).replace('.', ',');
+}
+function renderKlimaat(){
   $('kPower').classList.toggle('actief', state.climateOn);
   $('kPowerLabel').textContent = state.climateOn ? 'Aan' : 'Uit';
   $('tempVal').textContent = state.temp.toFixed(1).replace('.', ',');
@@ -626,7 +633,11 @@ function render(){
   $('warmteR').classList.toggle('aan', state.seat);
   $('defrostBtn').classList.toggle('actief', state.shield && state.climateOn);
   zetSchakelaar('swSeat', state.seat); zetSchakelaar('swWheel', state.wheel);
-  zetSchakelaar('swShield', state.shield); zetSchakelaar('swStart', state.remoteStart);
+  zetSchakelaar('swShield', state.shield);
+  ['kPower', 'swSeat', 'swWheel', 'swShield', 'defrostBtn'].forEach(id => $(id).classList.toggle('grijs', state.live));
+}
+function renderBediening(){
+  zetSchakelaar('swStart', state.remoteStart);
   zetSchakelaar('swDepart', state.depart); zetSchakelaar('swDoorAlert', state.doorAlert);
   $('rowLockVal').textContent = state.locked ? 'Vergrendeld' : 'Ontgrendeld';
   $('trunkVal').textContent = state.trunkOpen ? 'Open' : 'Dicht';
@@ -634,7 +645,9 @@ function render(){
   $('subKlimaat').textContent = 'Binnen 19,5°' + (state.climateOn ? ' · aan' : '');
   $('subStatus').textContent = state.doorOpen ? 'Deur open' : 'Alles in orde';
   $('windowsVal').textContent = state.windowsOpen ? 'Open' : 'Gesloten';
-  $('mCost').textContent = 'DEZE SESSIE · €' + (state.addedKwh * state.tarief).toFixed(2).replace('.', ',');
+}
+function render(){
+  renderHeader(); renderLaden(); renderKlimaat(); renderBediening();
   herlaadFrame();
   updateHotspots();
 }
@@ -664,12 +677,20 @@ $('portBtn').onclick = () => {
   render();
 };
 $('limitRange').oninput = e => { state.limit = parseInt(e.target.value, 10); render(); };
+$('mCost').onclick = () => {
+  const v = prompt('Tarief per kWh (€)', state.tarief.toFixed(2).replace('.', ','));
+  if (v === null) return;
+  const n = parseFloat(String(v).replace(',', '.'));
+  if (n > 0 && n < 5){ state.tarief = n; localStorage.setItem('kugaTarief', String(n)); render(); toast('Tarief opgeslagen'); }
+  else toast('Ongeldig tarief');
+};
 $('tempMin').onclick = () => { state.temp = Math.max(16, state.temp - 0.5); render(); };
 $('tempPlus').onclick = () => { state.temp = Math.min(28, state.temp + 0.5); render(); };
 $('swSeat').onclick = () => { if (state.live){ toast('Niet beschikbaar via FordPass'); return; } state.seat = !state.seat; render(); };
 $('swWheel').onclick = () => { if (state.live){ toast('Niet beschikbaar via FordPass'); return; } state.wheel = !state.wheel; render(); };
 $('swShield').onclick = () => { if (state.live){ toast('Niet beschikbaar via FordPass'); return; } state.shield = !state.shield; render(); };
 $('defrostBtn').onclick = () => {
+  if (state.live){ toast('Niet beschikbaar via FordPass'); return; }
   const aan = !(state.climateOn && state.shield);
   state.climateOn = aan; state.shield = aan;
   toast(aan ? 'Ontdooien gestart' : 'Ontdooien uit'); render();
@@ -862,15 +883,12 @@ function klok(){
   $('hdrUpdated').textContent = 'Bijgewerkt ' + nu.toLocaleTimeString('nl-NL', {hour: '2-digit', minute: '2-digit'});
 }
 klok(); setInterval(klok, 30000);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('kuga-sw.js').catch(() => {}); });
+}
 
 render();
 </script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('kuga-sw.js').catch(() => {});
-  });
-}
-</script>
+
 </body>
 </html>
