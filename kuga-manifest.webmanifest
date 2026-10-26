@@ -1,0 +1,24 @@
+{
+ "name": "Ford Kuga",
+ "short_name": "Kuga",
+ "description": "Tesla-style app voor de Ford Kuga PHEV",
+ "start_url": "kuga-tesla.html",
+ "scope": ".",
+ "display": "standalone",
+ "background_color": "#131315",
+ "theme_color": "#131315",
+ "icons": [
+  {
+   "src": "kuga-icon.svg",
+   "sizes": "512x512",
+   "type": "image/svg+xml",
+   "purpose": "any"
+  },
+  {
+   "src": "kuga-icon.svg",
+   "sizes": "512x512",
+   "type": "image/svg+xml",
+   "purpose": "maskable"
+  }
+ ]
+}
