@@ -10,6 +10,7 @@ class EnergieMeter extends HTMLElement {
         import: 'sensor.p1_meter_energie_import',
         export: 'sensor.p1_meter_energie_export',
         gas: 'sensor.gas_meter_gas',
+        solar: 'sensor.solaredge_i1_ac_energy',
         tap_path: '/energie-thuis',
       },
       config || {}
@@ -47,6 +48,7 @@ class EnergieMeter extends HTMLElement {
     start.setHours(0, 0, 0, 0);
     const ids = [this._config.import, this._config.export, this._config.power];
     if (this._config.gas) ids.push(this._config.gas);
+    if (this._config.solar) ids.push(this._config.solar);
     const res = await this._hass.callWS({
       type: 'recorder/statistics_during_period',
       start_time: start.toISOString(),
@@ -83,6 +85,7 @@ class EnergieMeter extends HTMLElement {
     let impToday = null,
       expToday = null,
       gasToday = null,
+      solToday = null,
       peak = null;
     const hours = [];
     if (this._stats) {
@@ -93,6 +96,8 @@ class EnergieMeter extends HTMLElement {
       impToday = imp.reduce((s, r) => s + (r.change || 0), 0);
       expToday = exp.reduce((s, r) => s + (r.change || 0), 0);
       if (gas.length) gasToday = gas.reduce((s, r) => s + (r.change || 0), 0);
+      const sol = c.solar ? this._stats[c.solar] || [] : [];
+      if (sol.length) solToday = sol.reduce((s, r) => s + (r.change || 0), 0);
       if (!imp.length && !exp.length) {
         impToday = expToday = null;
       }
@@ -165,6 +170,10 @@ class EnergieMeter extends HTMLElement {
         this._fmt(impToday, 1) + ' <small>kWh</small></div></div>' +
         '<div class="stat"><div class="k">TERUG VANDAAG</div><div class="v">' +
         this._fmt(expToday, 1) + ' <small>kWh</small></div></div>' +
+        (solToday !== null
+          ? '<div class="stat"><div class="k">OPGEWEKT VANDAAG</div><div class="v">' +
+            this._fmt(solToday, 1) + ' <small>kWh</small></div></div>'
+          : '') +
         (gasToday !== null
           ? '<div class="stat"><div class="k">GAS VANDAAG</div><div class="v">' +
             this._fmt(gasToday, 2) + ' <small>m³</small></div></div>'
