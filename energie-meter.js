@@ -9,6 +9,7 @@ class EnergieMeter extends HTMLElement {
         power: 'sensor.p1_meter_vermogen',
         import: 'sensor.p1_meter_energie_import',
         export: 'sensor.p1_meter_energie_export',
+        gas: 'sensor.gas_meter_gas',
         tap_path: '/energie-thuis',
       },
       config || {}
@@ -44,11 +45,13 @@ class EnergieMeter extends HTMLElement {
   async _fetchStats() {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    const ids = [this._config.import, this._config.export, this._config.power];
+    if (this._config.gas) ids.push(this._config.gas);
     const res = await this._hass.callWS({
       type: 'recorder/statistics_during_period',
       start_time: start.toISOString(),
       end_time: new Date().toISOString(),
-      statistic_ids: [this._config.import, this._config.export, this._config.power],
+      statistic_ids: ids,
       period: 'hour',
       types: ['change', 'max', 'min'],
     });
@@ -79,14 +82,17 @@ class EnergieMeter extends HTMLElement {
     // --- statistieken van vandaag ---
     let impToday = null,
       expToday = null,
+      gasToday = null,
       peak = null;
     const hours = [];
     if (this._stats) {
       const imp = this._stats[c.import] || [];
       const exp = this._stats[c.export] || [];
       const pow = this._stats[c.power] || [];
+      const gas = c.gas ? this._stats[c.gas] || [] : [];
       impToday = imp.reduce((s, r) => s + (r.change || 0), 0);
       expToday = exp.reduce((s, r) => s + (r.change || 0), 0);
+      if (gas.length) gasToday = gas.reduce((s, r) => s + (r.change || 0), 0);
       if (!imp.length && !exp.length) {
         impToday = expToday = null;
       }
@@ -158,7 +164,12 @@ class EnergieMeter extends HTMLElement {
         '<div class="stat"><div class="k">VERBRUIKT VANDAAG</div><div class="v">' +
         this._fmt(impToday, 1) + ' <small>kWh</small></div></div>' +
         '<div class="stat"><div class="k">TERUG VANDAAG</div><div class="v">' +
-        this._fmt(expToday, 1) + ' <small>kWh</small></div></div></div>';
+        this._fmt(expToday, 1) + ' <small>kWh</small></div></div>' +
+        (gasToday !== null
+          ? '<div class="stat"><div class="k">GAS VANDAAG</div><div class="v">' +
+            this._fmt(gasToday, 2) + ' <small>m³</small></div></div>'
+          : '') +
+        '</div>';
     }
 
     // uurbalken
