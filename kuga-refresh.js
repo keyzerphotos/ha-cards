@@ -3,6 +3,9 @@
 // laatste data ouder is dan 10 minuten (en max. 1x per 10 min per apparaat,
 // via localStorage) — zo wordt de auto niet onnodig gewekt.
 class KugaRefresh extends HTMLElement {
+  setConfig(config) {
+    this._config = config;
+  }
   set hass(h) {
     if (this._done) return;
     const st = h.states["sensor.fordpass_wf0fxxwpmhld21343_lastrefresh"];
