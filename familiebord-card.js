@@ -1,4 +1,4 @@
-/* Familiebord home card v1.3 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.4 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -6,7 +6,10 @@
    v1.2: schaal valt terug op venstermaat als de kaart zelf geen hoogte krijgt.
    v1.3: host verankerd met position:fixed inset:0 (het wallpanel-patroon).
    In de app klapte de hosthoogte naar 0 en knipte overflow:hidden het hele
-   podium weg (zwart beeld); als vast schermvullend element kan dat niet meer. */
+   podium weg (zwart beeld); als vast schermvullend element kan dat niet meer.
+   v1.4: kamerchips zijn nu echt knoppen. Tot v1.3 waren ze alleen een
+   temperatuur-overzicht en toonde de ring altijd de woonkamer; wie erop
+   drukte zag terecht niets gebeuren. Tikken wisselt nu de ring naar die kamer. */
 (function () {
   "use strict";
 
@@ -87,7 +90,8 @@
   .srow .v{ font-size:24px; font-weight:400; }
   .srow .v span{ color:#9ba1a8; font-size:21px; }
   .chips{ position:absolute; left:96px; right:96px; bottom:88px; display:flex; justify-content:center; gap:16px; }
-  .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#9ba1a8; display:flex; align-items:center; gap:12px; }
+  .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#9ba1a8; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
+  .chip[data-room]:active{ transform:scale(.96); }
   .chip b{ color:#f4f4f2; font-weight:500; }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .dot{ width:8px; height:8px; }
@@ -146,7 +150,7 @@
       <div class="hours" id="hours"></div>
     </section>
     <section class="hero">
-      <div class="above caps">Woonkamer</div>
+      <div class="above caps" id="herolabel">Woonkamer</div>
       <div class="ringwrap">
         <div class="ring" id="ring"></div>
         <div class="ringdisc">
@@ -207,9 +211,10 @@
       root.appendChild(wrap);
       this._el = {};
       var self = this;
-      ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow",
+      ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",
        "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
+      this._room = 0;
       this._el.belweg.addEventListener("click", function () { self._hideBel(); });
       this._el.belgroot.addEventListener("click", function () {
         var v = self._el.belview;
@@ -285,8 +290,17 @@
         if (rainToday !== undefined) sub += rainToday > 0 ? " · Neerslag ±" + fmt(rainToday) + " mm" : " · Droog vandaag";
         el.wsub.textContent = sub;
       }
-      // ring woonkamer
-      var cl = this._st("climate.woonkamer_woonkamer");
+      // ring van de gekozen kamer
+      var zones = [
+        ["Woonkamer", "climate.woonkamer_woonkamer"],
+        ["Naud", "climate.slaapkamer_naud_slaapkamer_naud"],
+        ["Cas", "climate.slaapkamer_cas_slaapkamer_cas"],
+        ["Slaapkamer", "climate.slaapkamer_slaapkamer"],
+        ["Badkamer", "climate.badkamer_badkamer"]
+      ];
+      if (this._room >= zones.length) this._room = 0;
+      el.herolabel.textContent = zones[this._room][0];
+      var cl = this._st(zones[this._room][1]);
       if (cl) {
         var cur = cl.attributes.current_temperature;
         var set = cl.attributes.temperature;
@@ -319,22 +333,22 @@
         return '<div class="srow"><div class="k">' + (r.dot ? '<span class="dot"></span>' : "") + r.k +
           '</div><div class="v">' + r.v + "</div></div>";
       }).join("");
-      // chips
-      var zones = [
-        ["Woonkamer", "climate.woonkamer_woonkamer", true],
-        ["Naud", "climate.slaapkamer_naud_slaapkamer_naud", false],
-        ["Cas", "climate.slaapkamer_cas_slaapkamer_cas", false],
-        ["Slaapkamer", "climate.slaapkamer_slaapkamer", false],
-        ["Badkamer", "climate.badkamer_badkamer", false]
-      ];
-      var chips = zones.map(function (z) {
+      // chips (kamerkeuze voor de ring; Buiten is alleen informatie)
+      var chips = zones.map(function (z, i) {
         var s = self._st(z[1]);
         var v = s && s.attributes.current_temperature !== undefined ? fmt(s.attributes.current_temperature) : "--";
-        return '<div class="chip' + (z[2] ? " active" : "") + '">' + (z[2] ? '<span class="dot"></span>' : "") + z[0] + " <b>" + v + "°</b></div>";
+        var act = i === self._room;
+        return '<div class="chip' + (act ? " active" : "") + '" data-room="' + i + '">' + (act ? '<span class="dot"></span>' : "") + z[0] + " <b>" + v + "°</b></div>";
       });
       var bt = w && w.attributes.temperature !== undefined ? fmt(w.attributes.temperature) : "--";
       chips.push('<div class="chip">Buiten <b>' + bt + "°</b></div>");
       el.chips.innerHTML = chips.join("");
+      Array.prototype.forEach.call(el.chips.querySelectorAll("[data-room]"), function (chip) {
+        chip.addEventListener("click", function () {
+          self._room = parseInt(chip.getAttribute("data-room"), 10);
+          self._update();
+        });
+      });
     }
     _maybeForecast() {
       var now = Date.now();
