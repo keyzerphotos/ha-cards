@@ -1,4 +1,5 @@
-/* Familiebord home card v1.0 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.1 — webapp-stijl familiepagina voor Home Assistant.
+   v1.1: portretstand voor telefoons (zelfde kaart, eigen compositie).
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding. */
@@ -101,6 +102,25 @@
   .belbtns{ margin-top:32px; display:flex; gap:16px; justify-content:flex-end; }
   .btn{ font-size:23px; padding:18px 36px; border-radius:999px; border:1px solid rgba(255,255,255,.16); color:#f4f4f2; cursor:pointer; }
   .btn.primary{ background:#d9a441; border-color:#d9a441; color:#14100a; font-weight:600; }
+
+  /* Portretstand (telefoon): rustige stapel, geen urenstrip en geen todo */
+  .stage.portrait{ width:900px; height:1600px; }
+  .stage.portrait .topbar{ top:44px; left:48px; right:48px; }
+  .stage.portrait .topline{ top:96px; left:48px; right:48px; }
+  .stage.portrait .left{ left:48px; top:140px; width:804px; }
+  .stage.portrait .clock{ font-size:196px; }
+  .stage.portrait .weather{ margin-top:40px; }
+  .stage.portrait .hours{ display:none; }
+  .stage.portrait .hero{ top:872px; }
+  .stage.portrait .ringwrap{ width:430px; height:430px; }
+  .stage.portrait .ringdisc .now{ font-size:96px; }
+  .stage.portrait .right{ left:48px; right:48px; top:1152px; width:auto; }
+  .stage.portrait .todolabel, .stage.portrait #todo{ display:none; }
+  .stage.portrait .status{ margin-top:0; }
+  .stage.portrait .srow{ padding:17px 0; }
+  .stage.portrait .chips{ left:48px; right:48px; bottom:36px; flex-wrap:wrap; }
+  .stage.portrait .belcard{ width:820px; }
+  .stage.portrait .belview{ height:560px; }
   `;
 
   var HTML = `
@@ -133,7 +153,7 @@
       <div class="below" id="rbelow">…</div>
     </section>
     <aside class="right">
-      <div class="blocklabel"><span class="caps">Te doen</span><span class="add" id="todoadd">+ Nieuw</span></div>
+      <div class="blocklabel todolabel"><span class="caps">Te doen</span><span class="add" id="todoadd">+ Nieuw</span></div>
       <div id="todo"></div>
       <div class="status">
         <div class="blocklabel"><span class="caps">Status</span></div>
@@ -200,13 +220,15 @@
     }
     _fit() {
       var w = this.clientWidth || 1920, h = this.clientHeight || 1200;
-      var s = Math.min(w / 1920, h / 1200);
       var stage = this._el && this._el.stage;
-      if (stage) {
-        stage.style.transform = "scale(" + s + ")";
-        stage.style.marginLeft = ((w - 1920 * s) / 2) + "px";
-        stage.style.marginTop = ((h - 1200 * s) / 2) + "px";
-      }
+      if (!stage) return;
+      var portrait = h > w;
+      stage.classList.toggle("portrait", portrait);
+      var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
+      var s = Math.min(w / SW, h / SH);
+      stage.style.transform = "scale(" + s + ")";
+      stage.style.marginLeft = ((w - SW * s) / 2) + "px";
+      stage.style.marginTop = ((h - SH * s) / 2) + "px";
     }
     _tickClock() {
       if (!this._el || !this._el.clock) return;
