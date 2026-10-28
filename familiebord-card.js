@@ -1,5 +1,7 @@
-/* Familiebord home card v1.1 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.2 — webapp-stijl familiepagina voor Home Assistant.
    v1.1: portretstand voor telefoons (zelfde kaart, eigen compositie).
+   v1.2: schaal valt terug op venstermaat als de kaart zelf geen hoogte krijgt
+   (voorkomt zwart beeld in panel-weergave van de app). */
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding. */
@@ -214,14 +216,20 @@
       this._el.todoadd.addEventListener("click", function () { self._addTodo(); });
       this._ro = new ResizeObserver(function () { self._fit(); });
       this._ro.observe(this);
+      this._onResize = function () { self._fit(); };
+      window.addEventListener("resize", this._onResize);
       this._tickClock();
       this._clockTimer = setInterval(function () { self._tickClock(); }, 5000);
       this._fit();
+      setTimeout(function () { self._fit(); }, 300);
+      setTimeout(function () { self._fit(); }, 1200);
     }
+    getCardSize() { return 1; }
     _fit() {
-      var w = this.clientWidth || 1920, h = this.clientHeight || 1200;
       var stage = this._el && this._el.stage;
       if (!stage) return;
+      var w = this.clientWidth || window.innerWidth || 1920;
+      var h = this.clientHeight || window.innerHeight || 1200;
       var portrait = h > w;
       stage.classList.toggle("portrait", portrait);
       var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
@@ -425,6 +433,7 @@
     }
     disconnectedCallback() {
       if (this._ro) this._ro.disconnect();
+      if (this._onResize) window.removeEventListener("resize", this._onResize);
       clearInterval(this._clockTimer);
       clearInterval(this._camTimer);
       clearTimeout(this._belTimer);
