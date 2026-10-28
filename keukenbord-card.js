@@ -1,4 +1,4 @@
-/* Keukenbord card v1.2.0 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.1 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
@@ -64,7 +64,7 @@
   }
   var OVEN_PRESETS = [
     { id: "script.oven_preset_basmati", label: "Basmati", prog: "cooking_oven_program_steam_modes_steam" },
-    { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette" },
+    { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_heating_mode_hot_air", temp: 200 },
     { id: "script.oven_preset_warmhouden_60", label: "Warmhouden 60°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 60 },
     { id: "script.oven_preset_warmhouden_80", label: "Warmhouden 80°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 80 },
     { id: "script.oven_preset_hetelucht_180", label: "Hetelucht 180°", prog: "cooking_oven_program_heating_mode_hot_air", temp: 180 },

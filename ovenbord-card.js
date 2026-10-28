@@ -1,4 +1,4 @@
-/* Ovenbord card v1.4 — ovenpagina in dezelfde donkere stijl als het familiebord.
+/* Ovenbord card v1.4.1 — ovenpagina in dezelfde donkere stijl als het familiebord.
    v1.4: timer-rij onder de presets (min/plus) die input_number.oven_timer
    instelt; de hetelucht-scripts lezen daar hun programmaduur uit.
    v1.3: de fabrieksprogramma's zijn vervangen door Alex' persoonlijke presets
@@ -46,7 +46,7 @@
   var TIMER = "input_number.oven_timer";
   var OVEN_PRESETS = [
     { id: "script.oven_preset_basmati", label: "Basmati", prog: "cooking_oven_program_steam_modes_steam" },
-    { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette" },
+    { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_heating_mode_hot_air", temp: 200 },
     { id: "script.oven_preset_warmhouden_60", label: "Warmhouden 60°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 60 },
     { id: "script.oven_preset_warmhouden_80", label: "Warmhouden 80°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 80 },
     { id: "script.oven_preset_hetelucht_180", label: "Hetelucht 180°", prog: "cooking_oven_program_heating_mode_hot_air", temp: 180 },
