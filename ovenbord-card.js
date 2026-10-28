@@ -1,7 +1,9 @@
-/* Ovenbord card v1.0 — ovenpagina in dezelfde donkere stijl als het familiebord.
+/* Ovenbord card v1.1 — ovenpagina in dezelfde donkere stijl als het familiebord.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Hero = actuele oventemperatuur in een ring; rechts programma-keuze als chips,
-   bediening (aan/uit, stop, kinderslot) en statusregels. */
+   bediening (aan/uit, stop, kinderslot) en statusregels.
+   v1.1: host verankerd met position:fixed inset:0 tegen zwart beeld in de app
+   (hosthoogte klapte naar 0 en overflow:hidden knipte het podium weg). */
 (function () {
   "use strict";
 
@@ -56,7 +58,7 @@
   }
 
   var CSS = `
-  :host{ display:block; height:100%; overflow:hidden; background:#08090b;
+  :host{ display:block; position:fixed; inset:0; height:100%; overflow:hidden; background:#08090b;
     font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color:#f4f4f2;
     -webkit-font-smoothing:antialiased; }
   *{ margin:0; padding:0; box-sizing:border-box; }

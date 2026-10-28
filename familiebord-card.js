@@ -1,10 +1,12 @@
-/* Familiebord home card v1.2 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.3 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
    v1.1: portretstand voor telefoons (zelfde kaart, eigen compositie).
-   v1.2: schaal valt terug op venstermaat als de kaart zelf geen hoogte krijgt
-   (voorkomt zwart beeld in panel-weergave van de app). */
+   v1.2: schaal valt terug op venstermaat als de kaart zelf geen hoogte krijgt.
+   v1.3: host verankerd met position:fixed inset:0 (het wallpanel-patroon).
+   In de app klapte de hosthoogte naar 0 en knipte overflow:hidden het hele
+   podium weg (zwart beeld); als vast schermvullend element kan dat niet meer. */
 (function () {
   "use strict";
 
@@ -36,7 +38,7 @@
   };
 
   var CSS = `
-  :host{ display:block; width:100%; height:100%; }
+  :host{ display:block; position:fixed; inset:0; width:100%; height:100%; }
   *{ margin:0; padding:0; box-sizing:border-box; }
   .stage{
     position:relative; width:1920px; height:1200px; transform-origin: top left;
