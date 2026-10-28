@@ -1,4 +1,4 @@
-/* Familiebord home card v1.5 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.6 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -14,7 +14,10 @@
    temperatuur lokaal via HomeKit (stapjes van 0,5). Modusknoppen onder de
    ring: Verwarmen en Uit lokaal, Schema hervatten = hvac_mode auto op de
    Tado-cloudentiteit (de _2), want alleen de cloud kan de handmatige
-   override wissen; zonder cloudlogin meldt de knop dat eerlijk terug. */
+   override wissen; zonder cloudlogin meldt de knop dat eerlijk terug.
+   v1.6: nav-balk onderin naar de andere Lenovo-pagina's (Keuken, Energie,
+   Auto); kamerchips schuiven daarvoor omhoog. Kuga-rij in de status leest
+   nu _soc (hoogspanningsaccu) in plaats van _battery (de 12V-startaccu). */
 (function () {
   "use strict";
 
@@ -94,7 +97,12 @@
   .srow .k{ display:flex; align-items:center; gap:14px; font-size:22px; color:#9ba1a8; }
   .srow .v{ font-size:24px; font-weight:400; }
   .srow .v span{ color:#9ba1a8; font-size:21px; }
-  .chips{ position:absolute; left:96px; right:96px; bottom:88px; display:flex; justify-content:center; gap:16px; }
+  .chips{ position:absolute; left:96px; right:96px; bottom:128px; display:flex; justify-content:center; gap:16px; }
+  .pnav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px; z-index:4;
+    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; }
+  .pnav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
+    border:1px solid transparent; letter-spacing:.04em; }
+  .pnav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
   .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#9ba1a8; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
   .chip[data-room]:active{ transform:scale(.96); }
   .ringrow{ display:flex; align-items:center; justify-content:center; gap:30px; }
@@ -133,14 +141,16 @@
   .stage.portrait .clock{ font-size:196px; }
   .stage.portrait .weather{ margin-top:40px; }
   .stage.portrait .hours{ display:none; }
-  .stage.portrait .hero{ top:826px; }
-  .stage.portrait .ringwrap{ width:430px; height:430px; }
+  .stage.portrait .hero{ top:800px; }
+  .stage.portrait .ringwrap{ width:400px; height:400px; }
   .stage.portrait .ringdisc .now{ font-size:96px; }
-  .stage.portrait .right{ left:48px; right:48px; top:1152px; width:auto; }
+  .stage.portrait .right{ left:48px; right:48px; top:1090px; width:auto; }
   .stage.portrait .todolabel, .stage.portrait #todo{ display:none; }
   .stage.portrait .status{ margin-top:0; }
-  .stage.portrait .srow{ padding:17px 0; }
-  .stage.portrait .chips{ left:48px; right:48px; bottom:36px; flex-wrap:wrap; }
+  .stage.portrait .srow{ padding:14px 0; }
+  .stage.portrait .chips{ left:48px; right:48px; bottom:100px; flex-wrap:wrap; }
+  .stage.portrait .pnav{ bottom:14px; }
+  .stage.portrait .pnav a{ font-size:19px; padding:10px 22px; }
   .stage.portrait .belcard{ width:820px; }
   .stage.portrait .belview{ height:560px; }
   `;
@@ -192,6 +202,12 @@
       </div>
     </aside>
     <nav class="chips" id="chips"></nav>
+    <div class="pnav">
+      <a href="/familie-bord" class="active">Home</a>
+      <a href="/keuken-bord">Keuken</a>
+      <a href="/energie-bord">Energie</a>
+      <a href="/auto-bord">Auto</a>
+    </div>
     <div class="overlay" id="overlay">
       <div class="belcard">
         <div class="belhead">
@@ -360,7 +376,7 @@
       var wm = this._num("sensor.power_plug_wasmachine_vermogen");
       if (wm !== null) rows.push({ k: "Wasmachine", dot: wm > 5, v: wm > 5 ? "Draait" : "Klaar" });
       var kg = this._st("sensor.fordpass_wf0fxxwpmhld21343_elvehcharging");
-      var kb = this._num("sensor.fordpass_wf0fxxwpmhld21343_battery");
+      var kb = this._num("sensor.fordpass_wf0fxxwpmhld21343_soc");
       if (kb !== null) {
         var charging = kg && (kg.state === "IN_PROGRESS" || kg.state === "CHARGING");
         rows.push({ k: "Kuga", dot: !!charging, v: (charging ? "Laadt · " : "Accu · ") + "<span>" + fmt(kb, 0) + "%</span>" });
