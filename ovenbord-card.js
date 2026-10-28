@@ -1,9 +1,12 @@
-/* Ovenbord card v1.1 — ovenpagina in dezelfde donkere stijl als het familiebord.
+/* Ovenbord card v1.2 — ovenpagina in dezelfde donkere stijl als het familiebord.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Hero = actuele oventemperatuur in een ring; rechts programma-keuze als chips,
    bediening (aan/uit, stop, kinderslot) en statusregels.
    v1.1: host verankerd met position:fixed inset:0 tegen zwart beeld in de app
-   (hosthoogte klapte naar 0 en overflow:hidden knipte het podium weg). */
+   (hosthoogte klapte naar 0 en overflow:hidden knipte het podium weg).
+   v1.2: directe tik-feedback. Home Connect is een cloudkoppeling, de echte
+   status komt pas na seconden terug; zonder eigen terugmelding lijkt een tik
+   dood. Tikken lichten nu meteen op (optimistische weergave, 12 s geldig). */
 (function () {
   "use strict";
 
@@ -92,6 +95,7 @@
   .chip{ font-size:22px; color:#d6d6d2; border:1px solid rgba(255,255,255,.13); border-radius:999px;
     padding:12px 22px; background:rgba(255,255,255,.025); cursor:pointer; user-select:none; }
   .chip.active{ border-color:rgba(217,164,65,.65); color:#f4f4f2; background:rgba(217,164,65,.10); }
+  .chip:active, .ctl:active, .srow.tap:active{ transform:scale(.97); }
   .controls{ display:flex; gap:16px; margin:26px 0 6px; }
   .ctl{ flex:1; text-align:center; font-size:23px; padding:18px 10px; border-radius:18px; cursor:pointer; user-select:none;
     border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.03); color:#f4f4f2; }
@@ -185,14 +189,19 @@
         powerctl: q("powerctl"), powerstate: q("powerstate"), stopctl: q("stopctl"),
         vdoor: q("vdoor"), vconn: q("vconn"), vremote: q("vremote"), vlock: q("vlock"), vlight: q("vlight") };
       var self = this;
+      this._opt = {};
       this._el.powerctl.addEventListener("click", function () {
+        self._opt.power = { v: self._st(E.power) !== "on" ? "on" : "off", t: Date.now() };
         self._svc("switch", "toggle", { entity_id: E.power });
+        self._update();
       });
       this._el.stopctl.addEventListener("click", function () {
         self._svc("button", "press", { entity_id: E.stopBtn });
       });
       q("lockrow").addEventListener("click", function () {
+        self._opt.lock = { v: self._st(E.childlock) !== "on" ? "on" : "off", t: Date.now() };
         self._svc("switch", "toggle", { entity_id: E.childlock });
+        self._update();
       });
       this._ro = new ResizeObserver(function () { self._fit(); });
       this._ro.observe(this);
@@ -215,10 +224,16 @@
       stage.style.marginLeft = ((w - SW * s) / 2) + "px";
       stage.style.marginTop = ((h - SH * s) / 2) + "px";
     }
+    _optVal(key, real) {
+      var o = this._opt && this._opt[key];
+      if (!o) return real;
+      if (Date.now() - o.t > 12000 || o.v === real) { delete this._opt[key]; return real; }
+      return o.v;
+    }
     _renderChips() {
       var el = this._el, self = this;
       var opts = this._attrs(E.selProg).options || [];
-      var current = this._st(E.selProg);
+      var current = this._optVal("sel", this._st(E.selProg));
       var html = "";
       opts.forEach(function (o) {
         html += '<span class="chip' + (o === current ? " active" : "") + '" data-prog="' + o + '">' + progLabel(o) + "</span>";
@@ -227,7 +242,9 @@
         el.chips.innerHTML = html;
         Array.prototype.forEach.call(el.chips.children, function (chip) {
           chip.addEventListener("click", function () {
+            self._opt.sel = { v: chip.getAttribute("data-prog"), t: Date.now() };
             self._svc("select", "select_option", { entity_id: E.selProg, option: chip.getAttribute("data-prog") });
+            self._update();
           });
         });
       }
@@ -238,7 +255,7 @@
       var tempRaw = parseFloat(this._st(E.temp));
       var hasTemp = !isNaN(tempRaw);
       var status = this._st(E.status) || "unavailable";
-      var powerOn = this._st(E.power) === "on";
+      var powerOn = this._optVal("power", this._st(E.power)) === "on";
       var running = status === "run" || status === "pause" || status === "delayedstart";
 
       el.sstatus.textContent = STATUS_NL[status] || status;
@@ -251,7 +268,7 @@
       el.tsub.textContent = running ? "aan het verwarmen" : (powerOn ? "stand-by" : "oven is uit");
 
       var active = this._st(E.activeProg);
-      var selected = this._st(E.selProg);
+      var selected = this._optVal("sel", this._st(E.selProg));
       var progShown = (active && active !== "unknown" && active !== "unavailable") ? active : selected;
       el.progname.textContent = progLabel(progShown);
 
@@ -274,7 +291,7 @@
       el.vdoor.textContent = DOOR_NL[this._st(E.door)] || this._st(E.door) || "Onbekend";
       el.vconn.textContent = this._st(E.conn) === "on" ? "Verbonden" : "Niet verbonden";
       el.vremote.textContent = this._st(E.remote) === "on" ? "Aan" : "Uit";
-      el.vlock.textContent = this._st(E.childlock) === "on" ? "Aan" : "Uit";
+      el.vlock.textContent = this._optVal("lock", this._st(E.childlock)) === "on" ? "Aan" : "Uit";
       el.vlight.textContent = this._st(E.light) === "on" ? "Aan" : "Uit";
     }
     disconnectedCallback() {
