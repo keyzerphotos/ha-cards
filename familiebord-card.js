@@ -1,4 +1,4 @@
-/* Familiebord home card v1.6 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.7 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -17,7 +17,10 @@
    override wissen; zonder cloudlogin meldt de knop dat eerlijk terug.
    v1.6: nav-balk onderin naar de andere Lenovo-pagina's (Keuken, Energie,
    Auto); kamerchips schuiven daarvoor omhoog. Kuga-rij in de status leest
-   nu _soc (hoogspanningsaccu) in plaats van _battery (de 12V-startaccu). */
+   nu _soc (hoogspanningsaccu) in plaats van _battery (de 12V-startaccu).
+   v1.7: statusrij "Cas · Beweegt" bovenaan de status als de bewegingssensor
+   in Cas zijn kamer iets ziet; de rij blijft 60 s staan na de laatste
+   beweging (zelfde patroon als de Voordeur-bewegingsrij). */
 (function () {
   "use strict";
 
@@ -318,6 +321,7 @@
           var eid = ev.data && ev.data.entity_id;
           if (eid === "binary_sensor.voordeur_ding" && ev.data.new_state && ev.data.new_state.state === "on") self._showBel();
           if (eid === "binary_sensor.voordeur_motion" && ev.data.new_state && ev.data.new_state.state === "on") self._motionTs = Date.now();
+          if (eid === "binary_sensor.0xa4c138259343bb2e_presence" && ev.data.new_state && ev.data.new_state.state === "on") self._casTs = Date.now();
         }, "state_changed");
       }
       this._maybeForecast();
@@ -385,6 +389,9 @@
       if (hv !== null) rows.push({ k: "Verbruik huis", dot: false, v: fmt(hv, 0) + " <span>W</span>" });
       var zp = this._num("sensor.solaredge_i1_ac_power");
       if (zp !== null) rows.push({ k: "Zon", dot: zp > 50, v: fmt(zp, 0) + " <span>W</span>" });
+      var cas = this._st("binary_sensor.0xa4c138259343bb2e_presence");
+      if ((cas && cas.state === "on") || (this._casTs && Date.now() - this._casTs < 60000))
+        rows.unshift({ k: "Cas", dot: true, v: "Beweegt" });
       if (this._motionTs && Date.now() - this._motionTs < 60000)
         rows.unshift({ k: "Voordeur", dot: true, v: "Beweging" });
       el.statusrows.innerHTML = rows.map(function (r) {
