@@ -1,4 +1,4 @@
-/* Familiebord home card v1.4 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.5 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -9,7 +9,12 @@
    podium weg (zwart beeld); als vast schermvullend element kan dat niet meer.
    v1.4: kamerchips zijn nu echt knoppen. Tot v1.3 waren ze alleen een
    temperatuur-overzicht en toonde de ring altijd de woonkamer; wie erop
-   drukte zag terecht niets gebeuren. Tikken wisselt nu de ring naar die kamer. */
+   drukte zag terecht niets gebeuren. Tikken wisselt nu de ring naar die kamer.
+   v1.5: verwarming bedienen per gekozen kamer. Min/plus naast de ring zet de
+   temperatuur lokaal via HomeKit (stapjes van 0,5). Modusknoppen onder de
+   ring: Verwarmen en Uit lokaal, Schema hervatten = hvac_mode auto op de
+   Tado-cloudentiteit (de _2), want alleen de cloud kan de handmatige
+   override wissen; zonder cloudlogin meldt de knop dat eerlijk terug. */
 (function () {
   "use strict";
 
@@ -92,6 +97,15 @@
   .chips{ position:absolute; left:96px; right:96px; bottom:88px; display:flex; justify-content:center; gap:16px; }
   .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#9ba1a8; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
   .chip[data-room]:active{ transform:scale(.96); }
+  .ringrow{ display:flex; align-items:center; justify-content:center; gap:30px; }
+  .stepbtn{ width:70px; height:70px; flex:0 0 auto; border-radius:50%; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.03); color:#e8e6e1; font-size:36px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; }
+  .stepbtn:active{ transform:scale(.93); border-color:rgba(217,164,65,.65); color:#f2ead8; }
+  .modes{ display:flex; gap:12px; justify-content:center; margin-top:28px; flex-wrap:wrap; }
+  .mode{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:15px 28px; font-size:20px; color:#9ba1a8; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .mode:active{ transform:scale(.96); }
+  .mode.active{ border-color:rgba(217,164,65,.55); color:#f2ead8; }
+  .mode .mdot{ visibility:hidden; width:8px; height:8px; }
+  .mode.active .mdot{ visibility:visible; }
   .chip b{ color:#f4f4f2; font-weight:500; }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .dot{ width:8px; height:8px; }
@@ -119,7 +133,7 @@
   .stage.portrait .clock{ font-size:196px; }
   .stage.portrait .weather{ margin-top:40px; }
   .stage.portrait .hours{ display:none; }
-  .stage.portrait .hero{ top:872px; }
+  .stage.portrait .hero{ top:826px; }
   .stage.portrait .ringwrap{ width:430px; height:430px; }
   .stage.portrait .ringdisc .now{ font-size:96px; }
   .stage.portrait .right{ left:48px; right:48px; top:1152px; width:auto; }
@@ -151,14 +165,23 @@
     </section>
     <section class="hero">
       <div class="above caps" id="herolabel">Woonkamer</div>
-      <div class="ringwrap">
-        <div class="ring" id="ring"></div>
-        <div class="ringdisc">
-          <div class="now"><span id="rnow">--,-</span><sup>°</sup></div>
-          <div class="set" id="rset">…</div>
+      <div class="ringrow">
+        <div class="stepbtn" id="stepmin">−</div>
+        <div class="ringwrap">
+          <div class="ring" id="ring"></div>
+          <div class="ringdisc">
+            <div class="now"><span id="rnow">--,-</span><sup>°</sup></div>
+            <div class="set" id="rset">…</div>
+          </div>
         </div>
+        <div class="stepbtn" id="stepplus">+</div>
       </div>
       <div class="below" id="rbelow">…</div>
+      <div class="modes">
+        <div class="mode" id="modeheat"><span class="dot mdot"></span>Verwarmen</div>
+        <div class="mode" id="modeschema"><span class="dot mdot"></span>Schema hervatten</div>
+        <div class="mode" id="modeoff"><span class="dot mdot"></span>Uit</div>
+      </div>
     </section>
     <aside class="right">
       <div class="blocklabel todolabel"><span class="caps">Te doen</span><span class="add" id="todoadd">+ Nieuw</span></div>
@@ -195,6 +218,14 @@
     return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
 
+  var ZONES = [
+    ["Woonkamer", "climate.woonkamer_woonkamer"],
+    ["Naud", "climate.slaapkamer_naud_slaapkamer_naud"],
+    ["Cas", "climate.slaapkamer_cas_slaapkamer_cas"],
+    ["Slaapkamer", "climate.slaapkamer_slaapkamer"],
+    ["Badkamer", "climate.badkamer_badkamer"]
+  ];
+
   class FamiliebordCard extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
@@ -212,9 +243,15 @@
       this._el = {};
       var self = this;
       ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",
+       "stepmin","stepplus","modeheat","modeschema","modeoff",
        "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
       this._room = 0;
+      this._el.stepmin.addEventListener("click", function () { self._step(-0.5); });
+      this._el.stepplus.addEventListener("click", function () { self._step(0.5); });
+      this._el.modeheat.addEventListener("click", function () { self._mode("heat"); });
+      this._el.modeschema.addEventListener("click", function () { self._mode("auto"); });
+      this._el.modeoff.addEventListener("click", function () { self._mode("off"); });
       this._el.belweg.addEventListener("click", function () { self._hideBel(); });
       this._el.belgroot.addEventListener("click", function () {
         var v = self._el.belview;
@@ -291,19 +328,14 @@
         el.wsub.textContent = sub;
       }
       // ring van de gekozen kamer
-      var zones = [
-        ["Woonkamer", "climate.woonkamer_woonkamer"],
-        ["Naud", "climate.slaapkamer_naud_slaapkamer_naud"],
-        ["Cas", "climate.slaapkamer_cas_slaapkamer_cas"],
-        ["Slaapkamer", "climate.slaapkamer_slaapkamer"],
-        ["Badkamer", "climate.badkamer_badkamer"]
-      ];
+      var zones = ZONES;
       if (this._room >= zones.length) this._room = 0;
       el.herolabel.textContent = zones[this._room][0];
       var cl = this._st(zones[this._room][1]);
       if (cl) {
         var cur = cl.attributes.current_temperature;
         var set = cl.attributes.temperature;
+        if (this._ovSet && this._ovSet.room === this._room && Date.now() < this._ovSet.until) set = this._ovSet.val;
         el.rnow.textContent = cur === undefined ? "--,-" : fmt(cur);
         el.rset.innerHTML = set === undefined || set === null ? "Verwarming uit" : "Ingesteld op <b>" + fmt(set) + "°</b>";
         var pct = cur === undefined ? 0 : Math.max(0, Math.min(100, (cur - 10) / 20 * 100));
@@ -313,6 +345,16 @@
           ? "Verwarming uit"
           : (heating ? '<span class="dot"></span>Verwarming aan' : "Op temperatuur");
       }
+      // modusknoppen: echte stand komt van de cloudentiteit als die er is
+      var cs = this._st(zones[this._room][1] + "_2");
+      var mode = null;
+      if (cs && cs.state !== "unavailable" && cs.state !== "unknown") mode = cs.state;
+      else if (cl) mode = cl.state === "off" ? "off" : "heat";
+      if (this._ovMode && this._ovMode.room === this._room && Date.now() < this._ovMode.until) mode = this._ovMode.mode;
+      el.modeheat.classList.toggle("active", mode === "heat");
+      el.modeschema.classList.toggle("active", mode === "auto");
+      el.modeoff.classList.toggle("active", mode === "off");
+      if (this._flashMsg && Date.now() < this._flashUntil) el.rbelow.textContent = this._flashMsg;
       // statusregels
       var rows = [];
       var wm = this._num("sensor.power_plug_wasmachine_vermogen");
@@ -349,6 +391,49 @@
           self._update();
         });
       });
+    }
+    _call(domain, service, data, target) {
+      if (!this._hass) return;
+      var p = this._hass.callService(domain, service, data, target);
+      if (p && p.catch) p.catch(function () {});
+    }
+    _step(d) {
+      var z = ZONES[this._room];
+      var s = this._st(z[1]);
+      if (!s) return;
+      var base = (this._ovSet && this._ovSet.room === this._room && Date.now() < this._ovSet.until)
+        ? this._ovSet.val : s.attributes.temperature;
+      if (base === undefined || base === null) base = s.attributes.current_temperature;
+      if (base === undefined || base === null) return;
+      var min = s.attributes.min_temp !== undefined ? s.attributes.min_temp : 5;
+      var max = s.attributes.max_temp !== undefined ? s.attributes.max_temp : 30;
+      var nv = Math.round((Number(base) + d) * 2) / 2;
+      nv = Math.max(min, Math.min(max, nv));
+      this._ovSet = { room: this._room, val: nv, until: Date.now() + 12000 };
+      this._call("climate", "set_temperature", { temperature: nv }, { entity_id: z[1] });
+      this._update();
+    }
+    _mode(m) {
+      var z = ZONES[this._room];
+      if (m === "auto") {
+        var cs = this._st(z[1] + "_2");
+        if (!cs || cs.state === "unavailable" || cs.state === "unknown") {
+          this._flash("Tado-cloud offline, log opnieuw in bij Tado");
+          return;
+        }
+        this._call("climate", "set_hvac_mode", { hvac_mode: "auto" }, { entity_id: z[1] + "_2" });
+      } else {
+        this._call("climate", "set_hvac_mode", { hvac_mode: m }, { entity_id: z[1] });
+      }
+      this._ovMode = { room: this._room, mode: m, until: Date.now() + 12000 };
+      this._update();
+    }
+    _flash(msg) {
+      this._flashMsg = msg;
+      this._flashUntil = Date.now() + 4500;
+      this._update();
+      var self = this;
+      setTimeout(function () { self._update(); }, 4700);
     }
     _maybeForecast() {
       var now = Date.now();
