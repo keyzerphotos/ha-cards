@@ -1,4 +1,6 @@
-/* Ovenbord card v1.3 — ovenpagina in dezelfde donkere stijl als het familiebord.
+/* Ovenbord card v1.4 — ovenpagina in dezelfde donkere stijl als het familiebord.
+   v1.4: timer-rij onder de presets (min/plus) die input_number.oven_timer
+   instelt; de hetelucht-scripts lezen daar hun programmaduur uit.
    v1.3: de fabrieksprogramma's zijn vervangen door Alex' persoonlijke presets
    (scripts script.oven_preset_*); tik = direct starten.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
@@ -41,6 +43,7 @@
   };
 
   var SETTEMP = "number.keuken_oven_ingestelde_temperatuur";
+  var TIMER = "input_number.oven_timer";
   var OVEN_PRESETS = [
     { id: "script.oven_preset_basmati", label: "Basmati", prog: "cooking_oven_program_steam_modes_steam" },
     { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette" },
@@ -71,6 +74,12 @@
     var key = String(raw).replace("cooking_oven_program_heating_mode_", "").replace("cooking_oven_program_", "");
     if (PROG_NL[key]) return PROG_NL[key];
     return key.replace(/_/g, " ").replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
+  function fmtTimer(min) {
+    min = Math.round(min);
+    if (min < 60) return min + " min";
+    var h = Math.floor(min / 60), r = min % 60;
+    return r ? h + " uur " + r + " min" : h + " uur";
   }
 
   var CSS = `
@@ -109,6 +118,14 @@
   .chip{ font-size:22px; color:#d6d6d2; border:1px solid rgba(255,255,255,.13); border-radius:999px;
     padding:12px 22px; background:rgba(255,255,255,.025); cursor:pointer; user-select:none; }
   .chip.active{ border-color:rgba(217,164,65,.65); color:#f4f4f2; background:rgba(217,164,65,.10); }
+  .timerrow{ display:flex; align-items:center; gap:16px; margin-top:14px; padding-top:16px;
+    border-top:1px solid rgba(255,255,255,.07); }
+  .timerrow .tlabel{ font-size:22px; color:#d6d6d2; margin-right:auto; }
+  .timerrow .tbtn{ width:54px; height:54px; border-radius:50%; border:1px solid rgba(217,164,65,.55);
+    color:#f4f4f2; font-size:30px; line-height:1; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none; background:rgba(217,164,65,.08); }
+  .timerrow .tbtn:active{ transform:scale(.94); }
+  .timerrow .tval{ font-size:25px; font-weight:500; min-width:128px; text-align:center; }
   .chip:active, .ctl:active, .srow.tap:active{ transform:scale(.97); }
   .controls{ display:flex; gap:16px; margin:26px 0 6px; }
   .ctl{ flex:1; text-align:center; font-size:23px; padding:18px 10px; border-radius:18px; cursor:pointer; user-select:none;
@@ -134,6 +151,8 @@
   .stage.portrait .herobelow{ margin-top:26px; }
   .stage.portrait .right{ left:48px; right:48px; top:850px; width:auto; }
   .stage.portrait .chip{ font-size:20px; padding:10px 18px; }
+  .stage.portrait .timerrow .tbtn{ width:48px; height:48px; font-size:26px; }
+  .stage.portrait .timerrow .tval{ min-width:112px; font-size:23px; }
   .stage.portrait .controls{ margin:20px 0 4px; }
   .stage.portrait .ctl{ padding:14px 8px; font-size:21px; }
   .stage.portrait .status{ margin-top:20px; }
@@ -182,6 +201,8 @@
         '<div class="right">' +
           '<div class="blocklabel"><span class="caps">Mijn presets</span><span class="hint">tik = direct starten</span></div>' +
           '<div class="chips" id="chips"></div>' +
+          '<div class="timerrow"><span class="tlabel">Timer hetelucht</span>' +
+            '<span class="tbtn" id="tminus">\u2212</span><span class="tval" id="tval">--</span><span class="tbtn" id="tplus">+</span></div>' +
           '<div class="controls">' +
             '<div class="ctl" id="powerctl">Aan / uit<small id="powerstate">Uit</small></div>' +
             '<div class="ctl stop" id="stopctl">Stop programma<small>Direct stoppen</small></div>' +
@@ -199,7 +220,7 @@
       var q = function (id) { return root.getElementById(id); };
       this._el = { stage: q("stage"), ring: q("ring"), tnow: q("tnow"), tsub: q("tsub"),
         sdot: q("sdot"), sstatus: q("sstatus"), progname: q("progname"), progmeta: q("progmeta"),
-        progbarwrap: q("progbarwrap"), progbar: q("progbar"), chips: q("chips"),
+        progbarwrap: q("progbarwrap"), progbar: q("progbar"), chips: q("chips"), tval: q("tval"),
         powerctl: q("powerctl"), powerstate: q("powerstate"), stopctl: q("stopctl"),
         vdoor: q("vdoor"), vconn: q("vconn"), vremote: q("vremote"), vlock: q("vlock"), vlight: q("vlight") };
       var self = this;
@@ -217,6 +238,8 @@
         self._svc("switch", "toggle", { entity_id: E.childlock });
         self._update();
       });
+      q("tminus").addEventListener("click", function () { self._bumpTimer(-5); });
+      q("tplus").addEventListener("click", function () { self._bumpTimer(5); });
       this._ro = new ResizeObserver(function () { self._fit(); });
       this._ro.observe(this);
       this._onResize = function () { self._fit(); };
@@ -243,6 +266,14 @@
       if (!o) return real;
       if (Date.now() - o.t > 12000 || o.v === real) { delete this._opt[key]; return real; }
       return o.v;
+    }
+    _bumpTimer(delta) {
+      var cur = this._optVal("timer", parseFloat(this._st(TIMER)));
+      if (isNaN(cur)) cur = 60;
+      var v = Math.max(5, Math.min(360, cur + delta));
+      this._opt.timer = { v: v, t: Date.now() };
+      this._svc("input_number", "set_value", { entity_id: TIMER, value: v });
+      this._update();
     }
     _renderPresets() {
       var el = this._el, self = this;
@@ -277,6 +308,8 @@
       var powerOn = this._optVal("power", this._st(E.power)) === "on";
       var running = status === "run" || status === "pause" || status === "delayedstart";
 
+      var tmin = this._optVal("timer", parseFloat(this._st(TIMER)));
+      el.tval.textContent = isNaN(tmin) ? "--" : fmtTimer(tmin);
       el.sstatus.textContent = STATUS_NL[status] || status;
       el.sdot.className = "dot" + (running || powerOn ? " on" : "");
       el.tnow.textContent = hasTemp ? String(Math.round(tempRaw)) : "--";
