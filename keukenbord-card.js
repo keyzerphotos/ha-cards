@@ -1,7 +1,10 @@
-/* Keukenbord card v1.0.3 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.1.0 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
-   programmachips, aan/uit + stop en statusregels. Onderaan een nav-balk
+   chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
+   v1.1.0: de 13 fabrieksprogramma's van de oven zijn vervangen door Alex'
+   persoonlijke presets (scripts script.oven_preset_*); tik = direct starten.
+   De vaatwasser houdt zijn gewone programmachips.
    Tik-feedback is optimistisch (12 s), net als het ovenbord: de Home
    Connect-cloud echoot de echte status pas na enkele seconden terug.
    Host verankerd met position:fixed inset:0 (wallpanel-patroon). */
@@ -48,6 +51,16 @@
     light: "binary_sensor.vaatwasser_interior_illumination_active"
   };
 
+  var SETTEMP = "number.keuken_oven_ingestelde_temperatuur";
+  var OVEN_PRESETS = [
+    { id: "script.oven_preset_basmati", label: "Basmati", prog: "cooking_oven_program_steam_modes_steam" },
+    { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette" },
+    { id: "script.oven_preset_warmhouden_60", label: "Warmhouden 60°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 60 },
+    { id: "script.oven_preset_warmhouden_80", label: "Warmhouden 80°", prog: "cooking_oven_program_heating_mode_keep_warm", temp: 80 },
+    { id: "script.oven_preset_hetelucht_180", label: "Hetelucht 180°", prog: "cooking_oven_program_heating_mode_hot_air", temp: 180 },
+    { id: "script.oven_preset_hetelucht_200", label: "Hetelucht 200°", prog: "cooking_oven_program_heating_mode_hot_air", temp: 200 }
+  ];
+
   var STATUS_NL = {
     inactive: "Niet actief", ready: "Gereed", delayedstart: "Startuitstel",
     run: "Bezig", pause: "Gepauzeerd", actionrequired: "Actie nodig",
@@ -60,6 +73,7 @@
     hot_air_grilling: "Heteluchtgrill", pizza_setting: "Pizzastand", bottom_heating: "Onderwarmte",
     preheat_ovenware: "Servies voorverwarmen", frozen_heatup_special: "Diepvries opwarmen",
     sabbath_programme: "Sabbatprogramma", steam_modes_steam: "Stomen", keep_warm: "Warmhouden",
+    dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette: "Afbakbroodjes",
     intensive: "Intensief", hot_air_gentle: "Hetelucht zacht", top_bottom_heating_gentle: "Boven- en onderwarmte zacht",
     cool_star: "Coolstart", preheat_oven: "Voorverwarmen", dry: "Drogen", plate_warming: "Borden verwarmen"
   };
@@ -121,7 +135,9 @@
   .below{ margin-top:20px; text-align:center; }
   .below .prog{ font-size:30px; font-weight:500; }
   .below .meta{ margin-top:8px; font-size:22px; color:#a3a3a0; min-height:26px; }
-  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin:14px 0 4px; justify-content:center; }
+  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin:10px 0 4px; justify-content:center; }
+  .chipslabel{ margin-top:16px; text-align:center; font-size:17px; letter-spacing:.26em;
+    text-transform:uppercase; color:#a3a3a0; font-weight:500; }
   .chip{ font-size:19px; color:#d6d6d2; border:1px solid rgba(255,255,255,.13); border-radius:999px;
     padding:9px 16px; background:rgba(255,255,255,.025); cursor:pointer; user-select:none; }
   .chip.active{ border-color:rgba(217,164,65,.65); color:#f4f4f2; background:rgba(217,164,65,.10); }
@@ -178,6 +194,7 @@
         '<div class="sub" id="' + prefix + 'sub"></div></div></div>' +
       '<div class="below"><div class="prog" id="' + prefix + 'prog">Geen programma</div>' +
         '<div class="meta" id="' + prefix + 'meta"></div></div>' +
+      '<div class="chipslabel" id="' + prefix + 'chipslabel"></div>' +
       '<div class="chips" id="' + prefix + 'chips"></div>' +
       '<div class="controls">' +
         '<div class="ctl" id="' + prefix + 'power">Aan / uit<small id="' + prefix + 'powerstate">Uit</small></div>' +
@@ -228,6 +245,7 @@
         '<div class="panel left">' + panelHTML("o", "Oven") +
           '<div class="status">' +
             '<div class="srow"><span class="k">Deur</span><span class="v" id="odoor">Gesloten</span></div>' +
+            '<div class="srow xp"><span class="k">Start op afstand</span><span class="v" id="oremote">Uit</span></div>' +
             '<div class="srow tap" id="olockrow"><span class="k">Kinderslot</span><span class="v" id="olock">Uit</span></div>' +
             '<div class="srow xp"><span class="k">Verbinding</span><span class="v" id="oconn">Verbonden</span></div>' +
           '</div>' +
@@ -244,13 +262,15 @@
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok"];
       ["o", "v"].forEach(function (p) {
-        ["dot", "status", "ring", "now", "sub", "prog", "meta", "chips", "power", "powerstate", "stop"]
+        ["dot", "status", "ring", "now", "sub", "prog", "meta", "chips", "chipslabel", "power", "powerstate", "stop"]
           .forEach(function (s) { ids.push(p + s); });
       });
-      ids.push("odoor", "olock", "oconn", "vdoor", "vremote", "vconn");
+      ids.push("odoor", "olock", "oconn", "oremote", "vdoor", "vremote", "vconn");
       this._el = {};
       var self = this;
       ids.forEach(function (id) { self._el[id] = q(id); });
+      q("ochipslabel").textContent = "Mijn presets · tik = start";
+      q("vchipslabel").textContent = "Programma kiezen";
 
       q("opower").addEventListener("click", function () {
         self._opt.opow = { v: self._st(OVEN.power) !== "on" ? "on" : "off", t: Date.now() };
@@ -326,6 +346,31 @@
         });
       }
     }
+    _renderPresetChips() {
+      var el = this._el, self = this;
+      var active = this._st(OVEN.activeProg);
+      var setTemp = parseFloat(this._st(SETTEMP));
+      var tapped = this._optPreset;
+      var html = "";
+      OVEN_PRESETS.forEach(function (p) {
+        var on = false;
+        if (tapped && tapped.id === p.id && Date.now() - tapped.t < 20000) on = true;
+        if (active === p.prog && (p.temp === undefined || isNaN(setTemp) || setTemp === p.temp)) on = true;
+        html += '<span class="chip' + (on ? " active" : "") + '" data-preset="' + p.id + '">' + p.label + "</span>";
+      });
+      var box = el.ochips;
+      if (box.innerHTML !== html) {
+        box.innerHTML = html;
+        Array.prototype.forEach.call(box.children, function (chip) {
+          chip.addEventListener("click", function () {
+            var id = chip.getAttribute("data-preset");
+            self._optPreset = { id: id, t: Date.now() };
+            self._svc("script", "turn_on", { entity_id: id });
+            self._update();
+          });
+        });
+      }
+    }
     _updateAppliance(prefix, E, labelFn, keys, extra) {
       var el = this._el;
       var status = this._st(E.status) || "unavailable";
@@ -344,7 +389,8 @@
       if (endt && (running || status === "delayedstart")) meta += (meta ? " · " : "") + "klaar om " + endt;
       el[prefix + "meta"].textContent = meta;
       if (extra.center) extra.center(el, prefix, { status: status, powerOn: powerOn, running: running, prog: prog });
-      this._renderChips(prefix, E.selProg, labelFn, keys.sel);
+      if (prefix === "o") this._renderPresetChips();
+      else this._renderChips(prefix, E.selProg, labelFn, keys.sel);
       el[prefix + "power"].className = "ctl" + (powerOn ? " on" : "");
       el[prefix + "powerstate"].textContent = powerOn ? "Aan" : "Uit";
     }
@@ -368,6 +414,7 @@
       el.odoor.textContent = DOOR_NL[this._st(OVEN.door)] || this._st(OVEN.door) || "Onbekend";
       el.olock.textContent = this._optVal("olock", this._st(OVEN.childlock)) === "on" ? "Aan" : "Uit";
       el.oconn.textContent = this._st(OVEN.conn) === "on" ? "Verbonden" : "Niet verbonden";
+      el.oremote.textContent = this._st(OVEN.remote) === "on" ? "Aan" : "Uit";
 
       this._updateAppliance("v", VAAT, dwLabel, { pow: "vpow", sel: "vsel" }, {
         center: function (el2, p, ctx) {
