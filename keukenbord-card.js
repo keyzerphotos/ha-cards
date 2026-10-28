@@ -1,7 +1,10 @@
-/* Keukenbord card v1.1.0 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.0 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
+   v1.2.0: timer-rij bij de oven (min/plus) die input_number.oven_timer
+   instelt; de hetelucht-scripts lezen daar hun programmaduur uit. De rij
+   verbergt in portretstand (class xp), net als de andere extra regels.
    v1.1.0: de 13 fabrieksprogramma's van de oven zijn vervangen door Alex'
    persoonlijke presets (scripts script.oven_preset_*); tik = direct starten.
    De vaatwasser houdt zijn gewone programmachips.
@@ -52,6 +55,13 @@
   };
 
   var SETTEMP = "number.keuken_oven_ingestelde_temperatuur";
+  var TIMER = "input_number.oven_timer";
+  function fmtTimer(min) {
+    min = Math.round(min);
+    if (min < 60) return min + " min";
+    var h = Math.floor(min / 60), r = min % 60;
+    return r ? h + " uur " + r + " min" : h + " uur";
+  }
   var OVEN_PRESETS = [
     { id: "script.oven_preset_basmati", label: "Basmati", prog: "cooking_oven_program_steam_modes_steam" },
     { id: "script.oven_preset_afbakbroodjes", label: "Afbakbroodjes", prog: "cooking_oven_program_dish_recommendation_conv_steam_part_cooked_bread_rolls_or_baguette" },
@@ -124,7 +134,7 @@
   .pstatus{ font-size:24px; display:flex; align-items:center; gap:12px; }
   .dot{ width:12px; height:12px; border-radius:50%; background:#3a3d42; }
   .dot.on{ background:#d9a441; box-shadow:0 0 14px rgba(217,164,65,.8); }
-  .ringwrap{ position:relative; width:300px; height:300px; margin:24px auto 0; }
+  .ringwrap{ position:relative; width:300px; height:300px; margin:12px auto 0; }
   .ring{ position:absolute; inset:0; border-radius:50%; }
   .ringdisc{ position:absolute; inset:22px; border-radius:50%; background:#0b0c0f;
     display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 20px; }
@@ -132,24 +142,31 @@
   .ringdisc .now sup{ font-size:38px; font-weight:300; color:#d9a441; margin-left:4px; }
   .ringdisc .now.word{ font-size:52px; letter-spacing:0; }
   .ringdisc .sub{ margin-top:12px; font-size:22px; color:#a3a3a0; text-align:center; }
-  .below{ margin-top:20px; text-align:center; }
+  .below{ margin-top:12px; text-align:center; }
   .below .prog{ font-size:30px; font-weight:500; }
   .below .meta{ margin-top:8px; font-size:22px; color:#a3a3a0; min-height:26px; }
   .chips{ display:flex; flex-wrap:wrap; gap:9px; margin:10px 0 4px; justify-content:center; }
-  .chipslabel{ margin-top:16px; text-align:center; font-size:17px; letter-spacing:.26em;
+  .chipslabel{ margin-top:10px; text-align:center; font-size:17px; letter-spacing:.26em;
     text-transform:uppercase; color:#a3a3a0; font-weight:500; }
   .chip{ font-size:19px; color:#d6d6d2; border:1px solid rgba(255,255,255,.13); border-radius:999px;
     padding:9px 16px; background:rgba(255,255,255,.025); cursor:pointer; user-select:none; }
   .chip.active{ border-color:rgba(217,164,65,.65); color:#f4f4f2; background:rgba(217,164,65,.10); }
+  .timerrow{ display:flex; align-items:center; gap:12px; margin-top:6px; }
+  .timerrow .tlabel{ font-size:20px; color:#d6d6d2; margin-right:auto; }
+  .timerrow .tbtn{ width:42px; height:42px; border-radius:50%; border:1px solid rgba(217,164,65,.55);
+    color:#f4f4f2; font-size:26px; line-height:1; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none; background:rgba(217,164,65,.08); }
+  .timerrow .tbtn:active{ transform:scale(.94); }
+  .timerrow .tval{ font-size:22px; font-weight:500; min-width:100px; text-align:center; }
   .chip:active, .ctl:active, .srow.tap:active{ transform:scale(.97); }
-  .controls{ display:flex; gap:14px; margin:16px 0 4px; }
+  .controls{ display:flex; gap:14px; margin:10px 0 4px; }
   .ctl{ flex:1; text-align:center; font-size:22px; padding:15px 10px; border-radius:16px; cursor:pointer; user-select:none;
     border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.03); color:#f4f4f2; }
   .ctl.on{ border-color:rgba(217,164,65,.65); background:rgba(217,164,65,.12); }
   .ctl small{ display:block; margin-top:5px; font-size:18px; color:#a3a3a0; }
   .ctl.stop{ color:#e8a09a; }
   .status{ margin-top:12px; }
-  .srow{ display:flex; justify-content:space-between; align-items:center; padding:9px 0;
+  .srow{ display:flex; justify-content:space-between; align-items:center; padding:7px 0;
     border-bottom:1px solid rgba(255,255,255,.07); font-size:23px; }
   .srow:last-child{ border-bottom:none; }
   .srow .k{ color:#d6d6d2; }
@@ -229,6 +246,14 @@
       if (Date.now() - o.t > 12000 || o.v === real) { delete this._opt[key]; return real; }
       return o.v;
     }
+    _bumpTimer(delta) {
+      var cur = this._optVal("timer", parseFloat(this._st(TIMER)));
+      if (isNaN(cur)) cur = 60;
+      var v = Math.max(5, Math.min(360, cur + delta));
+      this._opt.timer = { v: v, t: Date.now() };
+      this._svc("input_number", "set_value", { entity_id: TIMER, value: v });
+      this._update();
+    }
     _build() {
       if (this._built) return;
       this._built = true;
@@ -243,6 +268,8 @@
         '<div class="topline"></div>' +
         '<div class="divider"></div>' +
         '<div class="panel left">' + panelHTML("o", "Oven") +
+          '<div class="timerrow xp"><span class="tlabel">Timer hetelucht</span>' +
+            '<span class="tbtn" id="otminus">\u2212</span><span class="tval" id="otval">--</span><span class="tbtn" id="otplus">+</span></div>' +
           '<div class="status">' +
             '<div class="srow"><span class="k">Deur</span><span class="v" id="odoor">Gesloten</span></div>' +
             '<div class="srow xp"><span class="k">Start op afstand</span><span class="v" id="oremote">Uit</span></div>' +
@@ -265,7 +292,7 @@
         ["dot", "status", "ring", "now", "sub", "prog", "meta", "chips", "chipslabel", "power", "powerstate", "stop"]
           .forEach(function (s) { ids.push(p + s); });
       });
-      ids.push("odoor", "olock", "oconn", "oremote", "vdoor", "vremote", "vconn");
+      ids.push("otval", "odoor", "olock", "oconn", "oremote", "vdoor", "vremote", "vconn");
       this._el = {};
       var self = this;
       ids.forEach(function (id) { self._el[id] = q(id); });
@@ -285,6 +312,8 @@
         self._svc("switch", "toggle", { entity_id: OVEN.childlock });
         self._update();
       });
+      q("otminus").addEventListener("click", function () { self._bumpTimer(-5); });
+      q("otplus").addEventListener("click", function () { self._bumpTimer(5); });
       q("vpower").addEventListener("click", function () {
         self._opt.vpow = { v: self._st(VAAT.power) !== "on" ? "on" : "off", t: Date.now() };
         self._svc("switch", "toggle", { entity_id: VAAT.power });
@@ -415,6 +444,8 @@
       el.olock.textContent = this._optVal("olock", this._st(OVEN.childlock)) === "on" ? "Aan" : "Uit";
       el.oconn.textContent = this._st(OVEN.conn) === "on" ? "Verbonden" : "Niet verbonden";
       el.oremote.textContent = this._st(OVEN.remote) === "on" ? "Aan" : "Uit";
+      var tmin = this._optVal("timer", parseFloat(this._st(TIMER)));
+      el.otval.textContent = isNaN(tmin) ? "--" : fmtTimer(tmin);
 
       this._updateAppliance("v", VAAT, dwLabel, { pow: "vpow", sel: "vsel" }, {
         center: function (el2, p, ctx) {
