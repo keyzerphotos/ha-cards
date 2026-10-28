@@ -1,4 +1,4 @@
-/* Familiebord home card v1.7 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.8 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -20,7 +20,11 @@
    nu _soc (hoogspanningsaccu) in plaats van _battery (de 12V-startaccu).
    v1.7: statusrij "Cas · Beweegt" bovenaan de status als de bewegingssensor
    in Cas zijn kamer iets ziet; de rij blijft 60 s staan na de laatste
-   beweging (zelfde patroon als de Voordeur-bewegingsrij). */
+   beweging (zelfde patroon als de Voordeur-bewegingsrij).
+   v1.8: cameraknoppen (Voordeur, Naud, Cas) onder de status. Ze openen
+   hetzelfde kijkvenster als de deurbel, maar dan zonder de 60-seconden-
+   sluiter; het beeld ververst elke 4 s via auth/sign_path op de gekozen
+   camera. De deurbel zelf blijft de voordeur tonen met sluiter. */
 (function () {
   "use strict";
 
@@ -117,6 +121,10 @@
   .mode.active{ border-color:rgba(217,164,65,.55); color:#f2ead8; }
   .mode .mdot{ visibility:hidden; width:8px; height:8px; }
   .mode.active .mdot{ visibility:visible; }
+  .cams{ margin-top:34px; }
+  .cambtns{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .cambtn{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:13px 24px; font-size:19px; color:#d6d6d2; cursor:pointer; user-select:none; }
+  .cambtn:active{ transform:scale(.96); border-color:rgba(217,164,65,.65); color:#f2ead8; }
   .chip b{ color:#f4f4f2; font-weight:500; }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .dot{ width:8px; height:8px; }
@@ -203,6 +211,14 @@
         <div class="blocklabel"><span class="caps">Status</span></div>
         <div id="statusrows"></div>
       </div>
+      <div class="cams">
+        <div class="blocklabel"><span class="caps">Camera's</span></div>
+        <div class="cambtns">
+          <div class="cambtn" id="camvoordeur">Voordeur</div>
+          <div class="cambtn" id="camnaud">Naud</div>
+          <div class="cambtn" id="camcas">Cas</div>
+        </div>
+      </div>
     </aside>
     <nav class="chips" id="chips"></nav>
     <div class="pnav">
@@ -214,11 +230,11 @@
     <div class="overlay" id="overlay">
       <div class="belcard">
         <div class="belhead">
-          <div class="t"><span class="dot"></span>Er is aangebeld</div>
-          <div class="time">Voordeur · <span id="beltime">--:--</span></div>
+          <div class="t"><span class="dot"></span><span id="beltitle">Er is aangebeld</span></div>
+          <div class="time"><span id="camwhere">Voordeur</span> · <span id="beltime">--:--</span></div>
         </div>
         <div class="belview" id="belview">
-          <div class="cam">Voordeur</div>
+          <div class="cam" id="camname">Voordeur</div>
           <div class="live" id="bellive">Live beeld start…</div>
         </div>
         <div class="belbtns">
@@ -263,7 +279,8 @@
       var self = this;
       ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",
        "stepmin","stepplus","modeheat","modeschema","modeoff",
-       "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot"]
+       "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot",
+       "camvoordeur","camnaud","camcas","beltitle","camname","camwhere"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
       this._room = 0;
       this._el.stepmin.addEventListener("click", function () { self._step(-0.5); });
@@ -271,6 +288,9 @@
       this._el.modeheat.addEventListener("click", function () { self._mode("heat"); });
       this._el.modeschema.addEventListener("click", function () { self._mode("auto"); });
       this._el.modeoff.addEventListener("click", function () { self._mode("off"); });
+      this._el.camvoordeur.addEventListener("click", function () { self._openCam("camera.voordeur_live", "Voordeur"); });
+      this._el.camnaud.addEventListener("click", function () { self._openCam("camera.astronaud", "Naud"); });
+      this._el.camcas.addEventListener("click", function () { self._openCam("camera.astrocas", "Cas"); });
       this._el.belweg.addEventListener("click", function () { self._hideBel(); });
       this._el.belgroot.addEventListener("click", function () {
         var v = self._el.belview;
@@ -525,13 +545,25 @@
       }
     }
     _showBel() {
-      var el = this._el;
+      this._showCam("camera.voordeur_live", "Voordeur", 60000, "Er is aangebeld");
+    }
+    _openCam(eid, label) {
+      this._showCam(eid, label, 0, label);
+    }
+    _showCam(eid, label, autoHide, title) {
+      var el = this._el, self = this;
+      this._camEntity = eid;
+      el.beltitle.textContent = title;
+      el.camname.textContent = label;
+      el.camwhere.textContent = label;
       el.beltime.textContent = hhmm(new Date());
+      var old = el.belview.querySelector("img");
+      if (old) old.remove();
+      el.bellive.textContent = "Live beeld start…";
       el.overlay.classList.add("show");
-      this._belUntil = Date.now() + 60000;
-      var self = this;
+      this._belUntil = autoHide ? Date.now() + autoHide : 0;
       clearTimeout(this._belTimer);
-      this._belTimer = setTimeout(function () { self._hideBel(); }, 60000);
+      if (autoHide) this._belTimer = setTimeout(function () { self._hideBel(); }, autoHide);
       this._refreshCam();
       clearInterval(this._camTimer);
       this._camTimer = setInterval(function () { self._refreshCam(); }, 4000);
@@ -544,7 +576,7 @@
     _refreshCam() {
       var self = this;
       if (!this._hass || !this._hass.connection) return;
-      this._hass.connection.sendMessagePromise({ type: "auth/sign_path", path: "/api/camera_proxy/camera.voordeur_live" })
+      this._hass.connection.sendMessagePromise({ type: "auth/sign_path", path: "/api/camera_proxy/" + (this._camEntity || "camera.voordeur_live") })
         .then(function (res) {
           var img = self._el.belview.querySelector("img");
           if (!img) {
