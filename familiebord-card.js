@@ -1,4 +1,4 @@
-/* Familiebord home card v1.8 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.9 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -24,7 +24,9 @@
    v1.8: cameraknoppen (Voordeur, Naud, Cas) onder de status. Ze openen
    hetzelfde kijkvenster als de deurbel, maar dan zonder de 60-seconden-
    sluiter; het beeld ververst elke 4 s via auth/sign_path op de gekozen
-   camera. De deurbel zelf blijft de voordeur tonen met sluiter. */
+   camera. De deurbel zelf blijft de voordeur tonen met sluiter.
+   v1.9: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
+   borden). */
 (function () {
   "use strict";
 
@@ -226,6 +228,7 @@
       <a href="/keuken-bord">Keuken</a>
       <a href="/energie-bord">Energie</a>
       <a href="/auto-bord">Auto</a>
+      <a href="/stofzuiger-bord">Stofzuiger</a>
     </div>
     <div class="overlay" id="overlay">
       <div class="belcard">

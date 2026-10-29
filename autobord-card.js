@@ -1,9 +1,11 @@
-/* Autobord card v1.0.1 — autopagina (Ford Kuga PHEV) in de stijl van het
+/* Autobord card v1.0.2 — autopagina (Ford Kuga PHEV) in de stijl van het
    familiebord. Links de accuring (hoogspanningsaccu uit _soc, NIET de
    12V-accu uit _battery), met puls tijdens laden en de laadeindtijd uit
    FordPass. Rechts tegels, statusregels en bediening (slot, start op
    afstand, locatie, vernieuwen).
-   Host verankerd met position:fixed inset:0 (wallpanel-patroon). */
+   Host verankerd met position:fixed inset:0 (wallpanel-patroon).
+   v1.0.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
+   borden). */
 (function () {
   "use strict";
 
@@ -58,7 +60,7 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
   var NAV_ACTIVE = "Auto";
 
   var CSS = `

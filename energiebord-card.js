@@ -1,10 +1,12 @@
-/* Energiebord card v1.0 — energiepagina (P1 + SolarEdge) in de stijl van
+/* Energiebord card v1.0.1 — energiepagina (P1 + SolarEdge) in de stijl van
    het familiebord. Links live stromen (huisverbruik = P1 + zon, fysiek
    berekend), rechts vandaag-tegels en totalen.
    De vandaag-waarden zijn delta's van de tellerstanden sinds middernacht,
    opgehaald via history/history_during_period over de websocket. Lukt dat
    niet, dan tonen de tegels een streepje en blijven de totalen staan.
-   Host verankerd met position:fixed inset:0 (wallpanel-patroon). */
+   Host verankerd met position:fixed inset:0 (wallpanel-patroon).
+   v1.0.1: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
+   borden). */
 (function () {
   "use strict";
 
@@ -53,7 +55,7 @@
     return v.toLocaleString("nl-NL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
   var NAV_ACTIVE = "Energie";
 
   var CSS = `

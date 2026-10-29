@@ -1,4 +1,4 @@
-/* Keukenbord card v1.2.1 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.2 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
@@ -10,7 +10,9 @@
    De vaatwasser houdt zijn gewone programmachips.
    Tik-feedback is optimistisch (12 s), net als het ovenbord: de Home
    Connect-cloud echoot de echte status pas na enkele seconden terug.
-   Host verankerd met position:fixed inset:0 (wallpanel-patroon). */
+   Host verankerd met position:fixed inset:0 (wallpanel-patroon).
+   v1.2.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
+   borden). */
 (function () {
   "use strict";
 
@@ -111,7 +113,7 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
   var NAV_ACTIVE = "Keuken";
 
   var CSS = `
