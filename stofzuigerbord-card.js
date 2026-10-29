@@ -1,4 +1,4 @@
-/* Stofzuigerbord card v1.0 — stofzuigerpagina (Ecovacs Deebot James) in de
+/* Stofzuigerbord card v1.0.1 — stofzuigerpagina (Ecovacs Deebot James) in de
    stijl van de bordenfamilie. Links de echte plattegrond (image.james) in een
    vast paneel, daaronder de status in woorden. Rechts de laatste schoonmaak
    als tegels, zuigstand als chips en de bediening: een gouden hoofdknop met
@@ -8,7 +8,11 @@
    De accu komt uit sensor.james_batterij; het battery-attribuut op
    vacuum.james zelf is leeg. Totalen (het _2-paar) blijven weg tot hun
    betekenis met een delta na een echte rit is bewezen.
-   Host verankerd met position:fixed inset:0 (wallpanel-patroon). */
+   Host verankerd met position:fixed inset:0 (wallpanel-patroon).
+   v1.0.1: de nav wisselt nu binnen de app (pushState + location-changed)
+   in plaats van een volledige paginalading; dat haalt de witte flits bij
+   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
 (function () {
   "use strict";
 
@@ -195,6 +199,22 @@
         '</div>' +
         '<div class="nav">' + navHtml + '</div>' +
       '</div>';
+      var hostEl = this;
+      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
+        a.addEventListener("click", function (ev) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          if (window.location.pathname === href) { ev.preventDefault(); return; }
+          try {
+            ev.preventDefault();
+            window.history.pushState(null, "", href);
+            var e = new Event("location-changed", { bubbles: true, composed: true });
+            e.detail = { replace: false };
+            window.dispatchEvent(e);
+            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
+          } catch (err) { window.location.href = href; }
+        });
+      });
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "mappanel", "kaartimg", "mapleeg", "kaartvers",
         "statusdot", "statuswoord", "gevolg", "online", "offline", "tbatt", "tbattsub", "topp", "tduur",

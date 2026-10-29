@@ -1,11 +1,15 @@
-/* Autobord card v1.0.2 — autopagina (Ford Kuga PHEV) in de stijl van het
+/* Autobord card v1.0.3 — autopagina (Ford Kuga PHEV) in de stijl van het
    familiebord. Links de accuring (hoogspanningsaccu uit _soc, NIET de
    12V-accu uit _battery), met puls tijdens laden en de laadeindtijd uit
    FordPass. Rechts tegels, statusregels en bediening (slot, start op
    afstand, locatie, vernieuwen).
    Host verankerd met position:fixed inset:0 (wallpanel-patroon).
    v1.0.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
-   borden). */
+   borden).
+   v1.0.3: de nav wisselt nu binnen de app (pushState + location-changed)
+   in plaats van een volledige paginalading; dat haalt de witte flits bij
+   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
 (function () {
   "use strict";
 
@@ -214,6 +218,22 @@
         '</div>' +
         '<div class="nav">' + navHtml + '</div>' +
       '</div>';
+      var hostEl = this;
+      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
+        a.addEventListener("click", function (ev) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          if (window.location.pathname === href) { ev.preventDefault(); return; }
+          try {
+            ev.preventDefault();
+            window.history.pushState(null, "", href);
+            var e = new Event("location-changed", { bubbles: true, composed: true });
+            e.detail = { replace: false };
+            window.dispatchEvent(e);
+            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
+          } catch (err) { window.location.href = href; }
+        });
+      });
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "ringwrap", "ring", "soc", "range", "laadregel", "carimg",
         "fuel", "fuelrange", "odo", "oil", "batt12", "vlock", "vdoors", "vtires", "valarm", "vfresh",

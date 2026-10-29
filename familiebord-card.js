@@ -1,4 +1,4 @@
-/* Familiebord home card v1.9 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.10 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -26,7 +26,11 @@
    sluiter; het beeld ververst elke 4 s via auth/sign_path op de gekozen
    camera. De deurbel zelf blijft de voordeur tonen met sluiter.
    v1.9: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
-   borden). */
+   borden).
+   v1.10: de nav wisselt nu binnen de app (pushState + location-changed)
+   in plaats van een volledige paginalading; dat haalt de witte flits bij
+   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
 (function () {
   "use strict";
 
@@ -278,6 +282,22 @@
       wrap.innerHTML = HTML;
       root.appendChild(style);
       root.appendChild(wrap);
+      var hostEl = this;
+      Array.prototype.forEach.call(root.querySelectorAll(".pnav a"), function (a) {
+        a.addEventListener("click", function (ev) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          if (window.location.pathname === href) { ev.preventDefault(); return; }
+          try {
+            ev.preventDefault();
+            window.history.pushState(null, "", href);
+            var e = new Event("location-changed", { bubbles: true, composed: true });
+            e.detail = { replace: false };
+            window.dispatchEvent(e);
+            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
+          } catch (err) { window.location.href = href; }
+        });
+      });
       this._el = {};
       var self = this;
       ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",

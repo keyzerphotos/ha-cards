@@ -1,4 +1,4 @@
-/* Energiebord card v1.0.1 — energiepagina (P1 + SolarEdge) in de stijl van
+/* Energiebord card v1.0.2 — energiepagina (P1 + SolarEdge) in de stijl van
    het familiebord. Links live stromen (huisverbruik = P1 + zon, fysiek
    berekend), rechts vandaag-tegels en totalen.
    De vandaag-waarden zijn delta's van de tellerstanden sinds middernacht,
@@ -6,7 +6,11 @@
    niet, dan tonen de tegels een streepje en blijven de totalen staan.
    Host verankerd met position:fixed inset:0 (wallpanel-patroon).
    v1.0.1: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
-   borden). */
+   borden).
+   v1.0.2: de nav wisselt nu binnen de app (pushState + location-changed)
+   in plaats van een volledige paginalading; dat haalt de witte flits bij
+   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
 (function () {
   "use strict";
 
@@ -193,6 +197,22 @@
         '</div>' +
         '<div class="nav">' + navHtml + '</div>' +
       '</div>';
+      var hostEl = this;
+      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
+        a.addEventListener("click", function (ev) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          if (window.location.pathname === href) { ev.preventDefault(); return; }
+          try {
+            ev.preventDefault();
+            window.history.pushState(null, "", href);
+            var e = new Event("location-changed", { bubbles: true, composed: true });
+            e.detail = { replace: false };
+            window.dispatchEvent(e);
+            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
+          } catch (err) { window.location.href = href; }
+        });
+      });
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "huis", "huissub", "zon", "net", "netlabel", "sestatus", "grid",
         "tarief", "timp", "texp", "tsol", "tgas", "saldo", "totimp", "totexp", "totsol", "totgas"];

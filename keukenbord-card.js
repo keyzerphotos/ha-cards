@@ -1,4 +1,4 @@
-/* Keukenbord card v1.2.2 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.3 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
@@ -12,7 +12,11 @@
    Connect-cloud echoot de echte status pas na enkele seconden terug.
    Host verankerd met position:fixed inset:0 (wallpanel-patroon).
    v1.2.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
-   borden). */
+   borden).
+   v1.2.3: de nav wisselt nu binnen de app (pushState + location-changed)
+   in plaats van een volledige paginalading; dat haalt de witte flits bij
+   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
 (function () {
   "use strict";
 
@@ -288,6 +292,22 @@
         '</div>' +
         '<div class="nav">' + navHtml + '</div>' +
       '</div>';
+      var hostEl = this;
+      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
+        a.addEventListener("click", function (ev) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          if (window.location.pathname === href) { ev.preventDefault(); return; }
+          try {
+            ev.preventDefault();
+            window.history.pushState(null, "", href);
+            var e = new Event("location-changed", { bubbles: true, composed: true });
+            e.detail = { replace: false };
+            window.dispatchEvent(e);
+            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
+          } catch (err) { window.location.href = href; }
+        });
+      });
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok"];
       ["o", "v"].forEach(function (p) {
