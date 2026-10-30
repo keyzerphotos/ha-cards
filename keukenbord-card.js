@@ -1,4 +1,4 @@
-/* Keukenbord card v1.2.3 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.4 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
@@ -16,7 +16,12 @@
    v1.2.3: de nav wisselt nu binnen de app (pushState + location-changed)
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
-   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden.
+   v1.2.4: audit-fix — de ovenring toont nu "Uit" als de oven uit is, net
+   als de vaatwasser. De temperatuurssensor houdt in de Home Connect-cloud
+   de waarde van de laatste rit vast (bijv. 131 graden van gisteren), en
+   die stond groot in de ring terwijl eronder "oven is uit" stond. De
+   temperatuur verschijnt pas weer als de oven aan staat of draait. */
 (function () {
   "use strict";
 
@@ -451,6 +456,13 @@
       var self = this;
       this._updateAppliance("o", OVEN, ovenLabel, { pow: "opow", sel: "osel" }, {
         center: function (el2, p, ctx) {
+          if (!ctx.powerOn) {
+            el2[p + "now"].className = "now word";
+            el2[p + "now"].textContent = "Uit";
+            el2[p + "ring"].style.background = "conic-gradient(rgba(217,164,65,.45) 0deg, rgba(255,255,255,.07) 0deg)";
+            el2[p + "sub"].textContent = "oven is uit";
+            return;
+          }
           var tempRaw = parseFloat(self._st(OVEN.temp));
           var hasTemp = !isNaN(tempRaw);
           el2[p + "now"].className = "now";

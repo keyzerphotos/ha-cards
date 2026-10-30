@@ -1,4 +1,4 @@
-/* Ovenbord card v1.4.1 — ovenpagina in dezelfde donkere stijl als het familiebord.
+/* Ovenbord card v1.4.2 — ovenpagina in dezelfde donkere stijl als het familiebord.
    v1.4: timer-rij onder de presets (min/plus) die input_number.oven_timer
    instelt; de hetelucht-scripts lezen daar hun programmaduur uit.
    v1.3: de fabrieksprogramma's zijn vervangen door Alex' persoonlijke presets
@@ -10,7 +10,13 @@
    (hosthoogte klapte naar 0 en overflow:hidden knipte het podium weg).
    v1.2: directe tik-feedback. Home Connect is een cloudkoppeling, de echte
    status komt pas na seconden terug; zonder eigen terugmelding lijkt een tik
-   dood. Tikken lichten nu meteen op (optimistische weergave, 12 s geldig). */
+   dood. Tikken lichten nu meteen op (optimistische weergave, 12 s geldig).
+   v1.4.2: audit-fix — de ring toont nu "Uit" als de oven uit is. De
+   temperatuurssensor houdt in de Home Connect-cloud de waarde van de
+   laatste rit vast (bijv. 131 graden van gisteren), en die stond groot in
+   de ring terwijl eronder "oven is uit" stond. De temperatuur verschijnt
+   pas weer als de oven aan staat of draait. Zelfde fix als keukenbord
+   v1.2.4. */
 (function () {
   "use strict";
 
@@ -104,6 +110,8 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .ringdisc .now{ font-size:118px; font-weight:300; letter-spacing:-.02em; line-height:1; }
   .ringdisc .now sup{ font-size:44px; font-weight:300; color:#d9a441; margin-left:4px; }
+  .ringdisc .now.word{ font-size:64px; letter-spacing:0; }
+  .ringdisc .now.word sup{ display:none; }
   .ringdisc .sub{ margin-top:14px; font-size:24px; color:#a3a3a0; }
   .herobelow{ margin-top:40px; text-align:center; }
   .herobelow .prog{ font-size:32px; font-weight:500; }
@@ -147,6 +155,7 @@
   .stage.portrait .left{ left:48px; top:120px; width:804px; }
   .stage.portrait .ringwrap{ width:400px; height:400px; margin-top:30px; }
   .stage.portrait .ringdisc .now{ font-size:98px; }
+  .stage.portrait .ringdisc .now.word{ font-size:54px; }
   .stage.portrait .progbar{ width:400px; }
   .stage.portrait .herobelow{ margin-top:26px; }
   .stage.portrait .right{ left:48px; right:48px; top:850px; width:auto; }
@@ -312,11 +321,18 @@
       el.tval.textContent = isNaN(tmin) ? "--" : fmtTimer(tmin);
       el.sstatus.textContent = STATUS_NL[status] || status;
       el.sdot.className = "dot" + (running || powerOn ? " on" : "");
-      el.tnow.textContent = hasTemp ? String(Math.round(tempRaw)) : "--";
-      var pct = hasTemp ? Math.max(0, Math.min(100, tempRaw / 250 * 100)) : 0;
-      var deg = pct / 100 * 360;
-      var col = running ? "#d9a441" : "rgba(217,164,65,.45)";
-      el.ring.style.background = "conic-gradient(" + col + " " + deg + "deg, rgba(255,255,255,.07) " + deg + "deg)";
+      if (!powerOn) {
+        el.tnow.parentElement.className = "now word";
+        el.tnow.textContent = "Uit";
+        el.ring.style.background = "conic-gradient(rgba(217,164,65,.45) 0deg, rgba(255,255,255,.07) 0deg)";
+      } else {
+        el.tnow.parentElement.className = "now";
+        el.tnow.textContent = hasTemp ? String(Math.round(tempRaw)) : "--";
+        var pct = hasTemp ? Math.max(0, Math.min(100, tempRaw / 250 * 100)) : 0;
+        var deg = pct / 100 * 360;
+        var col = running ? "#d9a441" : "rgba(217,164,65,.45)";
+        el.ring.style.background = "conic-gradient(" + col + " " + deg + "deg, rgba(255,255,255,.07) " + deg + "deg)";
+      }
       el.tsub.textContent = running ? "aan het verwarmen" : (powerOn ? "stand-by" : "oven is uit");
 
       var active = this._st(E.activeProg);
