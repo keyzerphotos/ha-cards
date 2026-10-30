@@ -1,5 +1,5 @@
 // Service worker — cachet de app-pagina zodat hij als geïnstalleerde app snel opent.
-const CACHE = 'kuga-app-v13';
+const CACHE = 'kuga-app-v14';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
