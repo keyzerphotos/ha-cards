@@ -1,4 +1,4 @@
-/* Keukenbord card v1.2.4 — keukenpagina (oven + vaatwasser) in de stijl van
+/* Keukenbord card v1.2.5 — keukenpagina (oven + vaatwasser) in de stijl van
    het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
    chips, aan/uit + stop en statusregels. Onderaan een nav-balk
    naar de andere Lenovo-pagina's.
@@ -14,6 +14,8 @@
    v1.2.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
    borden).
    v1.2.3: de nav wisselt nu binnen de app (pushState + location-changed)
+   v1.2.5: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
+          volledige paginalading i.p.v. SPA-wissel)
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden.
@@ -122,7 +124,7 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/local/babyfoon-live/index.html"]];
   var NAV_ACTIVE = "Keuken";
 
   var CSS = `
@@ -210,7 +212,7 @@
   .stage.portrait .status{ margin-top:10px; }
   .stage.portrait .srow{ padding:7px 0; font-size:21px; }
   .stage.portrait .xp{ display:none; }
-  .stage.portrait .nav{ bottom:14px; }
+  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
   .stage.portrait .nav a{ font-size:19px; padding:10px 22px; }
   `;
 
@@ -302,6 +304,7 @@
         a.addEventListener("click", function (ev) {
           var href = a.getAttribute("href");
           if (!href) return;
+          if (href.indexOf("/local/") === 0) return;
           if (window.location.pathname === href) { ev.preventDefault(); return; }
           try {
             ev.preventDefault();

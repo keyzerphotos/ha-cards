@@ -1,4 +1,4 @@
-/* Energiebord card v1.0.2 — energiepagina (P1 + SolarEdge) in de stijl van
+/* Energiebord card v1.0.3 — energiepagina (P1 + SolarEdge) in de stijl van
    het familiebord. Links live stromen (huisverbruik = P1 + zon, fysiek
    berekend), rechts vandaag-tegels en totalen.
    De vandaag-waarden zijn delta's van de tellerstanden sinds middernacht,
@@ -8,6 +8,8 @@
    v1.0.1: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
    borden).
    v1.0.2: de nav wisselt nu binnen de app (pushState + location-changed)
+   v1.0.3: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
+          volledige paginalading i.p.v. SPA-wissel)
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -59,7 +61,7 @@
     return v.toLocaleString("nl-NL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/local/babyfoon-live/index.html"]];
   var NAV_ACTIVE = "Energie";
 
   var CSS = `
@@ -126,7 +128,7 @@
   .stage.portrait .tile{ padding:18px 20px; }
   .stage.portrait .tile .tv{ font-size:46px; margin-top:10px; }
   .stage.portrait .totalen{ margin-top:24px; }
-  .stage.portrait .nav{ bottom:14px; }
+  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
   .stage.portrait .nav a{ font-size:19px; padding:10px 22px; }
   `;
 
@@ -202,6 +204,7 @@
         a.addEventListener("click", function (ev) {
           var href = a.getAttribute("href");
           if (!href) return;
+          if (href.indexOf("/local/") === 0) return;
           if (window.location.pathname === href) { ev.preventDefault(); return; }
           try {
             ev.preventDefault();

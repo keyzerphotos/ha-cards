@@ -1,4 +1,4 @@
-/* Stofzuigerbord card v1.0.1 — stofzuigerpagina (Ecovacs Deebot James) in de
+/* Stofzuigerbord card v1.0.2 — stofzuigerpagina (Ecovacs Deebot James) in de
    stijl van de bordenfamilie. Links de echte plattegrond (image.james) in een
    vast paneel, daaronder de status in woorden. Rechts de laatste schoonmaak
    als tegels, zuigstand als chips en de bediening: een gouden hoofdknop met
@@ -10,6 +10,8 @@
    betekenis met een delta na een echte rit is bewezen.
    Host verankerd met position:fixed inset:0 (wallpanel-patroon).
    v1.0.1: de nav wisselt nu binnen de app (pushState + location-changed)
+   v1.0.2: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
+          volledige paginalading i.p.v. SPA-wissel)
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -53,7 +55,7 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/local/babyfoon-live/index.html"]];
   var NAV_ACTIVE = "Stofzuiger";
 
   var CSS = `
@@ -130,7 +132,7 @@
   .stage.portrait .tile{ padding:16px 18px; }
   .stage.portrait .tile .tv{ font-size:42px; margin-top:8px; }
   .stage.portrait .blok{ margin-top:20px; }
-  .stage.portrait .nav{ bottom:14px; }
+  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
   .stage.portrait .nav a{ font-size:19px; padding:10px 18px; }
   `;
 
@@ -204,6 +206,7 @@
         a.addEventListener("click", function (ev) {
           var href = a.getAttribute("href");
           if (!href) return;
+          if (href.indexOf("/local/") === 0) return;
           if (window.location.pathname === href) { ev.preventDefault(); return; }
           try {
             ev.preventDefault();

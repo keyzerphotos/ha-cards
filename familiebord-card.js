@@ -1,4 +1,4 @@
-/* Familiebord home card v1.10 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.11 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -28,6 +28,8 @@
    v1.9: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
    borden).
    v1.10: de nav wisselt nu binnen de app (pushState + location-changed)
+   v1.11: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
+          volledige paginalading i.p.v. SPA-wissel)
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -166,7 +168,7 @@
   .stage.portrait .status{ margin-top:0; }
   .stage.portrait .srow{ padding:14px 0; }
   .stage.portrait .chips{ left:48px; right:48px; bottom:100px; flex-wrap:wrap; }
-  .stage.portrait .pnav{ bottom:14px; }
+  .stage.portrait .pnav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
   .stage.portrait .pnav a{ font-size:19px; padding:10px 22px; }
   .stage.portrait .belcard{ width:820px; }
   .stage.portrait .belview{ height:560px; }
@@ -233,6 +235,7 @@
       <a href="/energie-bord">Energie</a>
       <a href="/auto-bord">Auto</a>
       <a href="/stofzuiger-bord">Stofzuiger</a>
+      <a href="/local/babyfoon-live/index.html">Babyfoon</a>
     </div>
     <div class="overlay" id="overlay">
       <div class="belcard">
@@ -287,6 +290,7 @@
         a.addEventListener("click", function (ev) {
           var href = a.getAttribute("href");
           if (!href) return;
+          if (href.indexOf("/local/") === 0) return;
           if (window.location.pathname === href) { ev.preventDefault(); return; }
           try {
             ev.preventDefault();
