@@ -1,11 +1,12 @@
-/* Babyfoonbord card v1.0 — schermvullend kader met de losse babyfoonpagina
-   (go2rtc-spelers) als iframe. Eigen kaart i.p.v. de ingebouwde webpage-kaart:
+/* Babyfoonbord card v1.1 — schermvullend kader met de losse babyfoonpagina
+   (go2rtc-speler, WebRTC met terugpraten) als iframe. v1.1: pagina v5 (WebRTC,
+   één camera tegelijk). Eigen kaart i.p.v. de ingebouwde webpage-kaart:
    die gaf op de Lenovo een kale Configuratiefout in een panel-view, en de
    eigen kaart kan het iframe microfoonrecht geven voor het terugpraten.
    :host pakt het hele venster (wallpanel-patroon, zoals de andere borden). */
 (function () {
   "use strict";
-  var SRC = "/local/babyfoon-live/index.html?v=4";
+  var SRC = "/local/babyfoon-live/index.html?v=5";
   class BabyfoonbordCard extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
