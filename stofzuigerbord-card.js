@@ -1,4 +1,4 @@
-/* Stofzuigerbord card v1.0.2 — stofzuigerpagina (Ecovacs Deebot James) in de
+/* Stofzuigerbord card v1.0.3 — stofzuigerpagina (Ecovacs Deebot James) in de
    stijl van de bordenfamilie. Links de echte plattegrond (image.james) in een
    vast paneel, daaronder de status in woorden. Rechts de laatste schoonmaak
    als tegels, zuigstand als chips en de bediening: een gouden hoofdknop met
@@ -12,6 +12,9 @@
    v1.0.1: de nav wisselt nu binnen de app (pushState + location-changed)
    v1.0.2: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
           volledige paginalading i.p.v. SPA-wissel)
+   v1.0.3: Babyfoon wijst nu naar het dashboard /babyfoon-bord (iframe met
+          dezelfde pagina); de directe /local/-link landde vanuit de HA-app
+          op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -55,7 +58,7 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/local/babyfoon-live/index.html"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"]];
   var NAV_ACTIVE = "Stofzuiger";
 
   var CSS = `

@@ -1,4 +1,4 @@
-/* Energiebord card v1.0.3 — energiepagina (P1 + SolarEdge) in de stijl van
+/* Energiebord card v1.0.4 — energiepagina (P1 + SolarEdge) in de stijl van
    het familiebord. Links live stromen (huisverbruik = P1 + zon, fysiek
    berekend), rechts vandaag-tegels en totalen.
    De vandaag-waarden zijn delta's van de tellerstanden sinds middernacht,
@@ -10,6 +10,9 @@
    v1.0.2: de nav wisselt nu binnen de app (pushState + location-changed)
    v1.0.3: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
           volledige paginalading i.p.v. SPA-wissel)
+   v1.0.4: Babyfoon wijst nu naar het dashboard /babyfoon-bord (iframe met
+          dezelfde pagina); de directe /local/-link landde vanuit de HA-app
+          op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -61,7 +64,7 @@
     return v.toLocaleString("nl-NL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/local/babyfoon-live/index.html"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"]];
   var NAV_ACTIVE = "Energie";
 
   var CSS = `

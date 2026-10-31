@@ -1,4 +1,4 @@
-/* Familiebord home card v1.11 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.12 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -30,6 +30,9 @@
    v1.10: de nav wisselt nu binnen de app (pushState + location-changed)
    v1.11: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
           volledige paginalading i.p.v. SPA-wissel)
+   v1.12: Babyfoon wijst nu naar het dashboard /babyfoon-bord (iframe met
+          dezelfde pagina); de directe /local/-link landde vanuit de HA-app
+          op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -235,7 +238,7 @@
       <a href="/energie-bord">Energie</a>
       <a href="/auto-bord">Auto</a>
       <a href="/stofzuiger-bord">Stofzuiger</a>
-      <a href="/local/babyfoon-live/index.html">Babyfoon</a>
+      <a href="/babyfoon-bord">Babyfoon</a>
     </div>
     <div class="overlay" id="overlay">
       <div class="belcard">
