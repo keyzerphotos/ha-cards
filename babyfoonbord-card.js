@@ -5,7 +5,7 @@
    :host pakt het hele venster (wallpanel-patroon, zoals de andere borden). */
 (function () {
   "use strict";
-  var SRC = "/local/babyfoon-live/index.html?v=2";
+  var SRC = "/local/babyfoon-live/index.html?v=3";
   class BabyfoonbordCard extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
