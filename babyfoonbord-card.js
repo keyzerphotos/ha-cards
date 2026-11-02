@@ -1,4 +1,4 @@
-/* Babyfoonbord card v2.0 — schermvullend kader met de losse babyfoonpagina
+/* Babyfoonbord card v2.1 — schermvullend kader met de losse babyfoonpagina
    (go2rtc-speler, WebRTC met terugpraten) als iframe. v1.8: pagina v12
    (volledige herbouw: sessiearchitectuur, genormaliseerde streams via
    go2rtc, diagnose-snapshots naar input_text.babyfoon_diagnose).
@@ -7,13 +7,17 @@
    werken als de opslag in het iframe (kiosk-WebView) geblokkeerd is.
    v2.0: pagina v12.3: de stream loopt via de go2rtc-ingress i.p.v. de
    directe poort 1984, die in de kiosk-WebView niet opent (fail-ws).
+   v2.1: pagina v12.4: MSE als standaardtransport (WebRTC bevroor op de
+   Lenovo na circa twee seconden), statistiek-delta's gerepareerd zodat
+   'live' weer bereikbaar is, en geen poster van de andere kamer meer
+   bij een wissel (spookbeeld).
    De v11-pagina blijft als bestand staan als terugval. Eigen kaart i.p.v. de ingebouwde webpage-kaart:
    die gaf op de Lenovo een kale Configuratiefout in een panel-view, en de
    eigen kaart kan het iframe microfoonrecht geven voor het terugpraten.
    :host pakt het hele venster (wallpanel-patroon, zoals de andere borden). */
 (function () {
   "use strict";
-  var SRC = "/local/babyfoon-live-v12/index.html?v=12.3";
+  var SRC = "/local/babyfoon-live-v12/index.html?v=12.4";
   class BabyfoonbordCard extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
