@@ -1,4 +1,4 @@
-/* Muziekbord v2.2 (3 nov 2026) — volledige herbouw op Alex' verzoek
+/* Muziekbord v2.3 (3 nov 2026) — volledige herbouw op Alex' verzoek
    ("gooi het maar helemaal op de schop, zorg dat het werkt en eruit ziet
    als Spotify"). Alleen dit bord verandert; de rest van het huis niet.
    Opzet volgens drie teamrapporten van 3 nov 2026 (HA/MA-API, Spotify-
@@ -28,6 +28,16 @@
    snelkeuzes zelf: favorieten beheren in de MA-app of MA-webinterface.
    Bewust NIET in deze versie: de grote speler uit de lokale v2.1-schets
    (tik op de hoes); die push wees Alex op 3 nov 2026 af.
+   v2.3: ontwerpteamronde van 3 nov 2026 verwerkt, plus de grote speler
+   uit v2.1 alsnog erbij (Alex' akkoord): tik op de hoes opent de
+   schermvullende Nu-speelt-weergave. Verder: kaarten randloos met een
+   vaste groene speelknop op de radiokaarten, groene zoekknop weg, het
+   dubbele speelt-nu-blok uit het spelerspaneel geschrapt (de status
+   staat nu in de gekozen rij), de volumesegmenten vervangen door een
+   dunne slider die per tik een stap zet (nooit een sprong naar vol),
+   rustigere typografie, het bronlabel grijs in plaats van groen, en
+   bij "niet bereikbaar" laadt het bord opnieuw via een tik op de
+   meldingstekst.
    Terugval: Lovelace-resource terugzetten op commit 647d8244 (v1.0,
    Cast-speler) volstaat; dit bestand hoeft daarvoor niet terug. */
 (function () {
@@ -59,7 +69,7 @@
   /* Kop */
   .kop{ position:absolute; left:44px; right:44px; top:30px; display:flex;
     justify-content:space-between; align-items:flex-start; }
-  .titel{ font-size:44px; font-weight:800; color:#ffffff; }
+  .titel{ font-size:44px; font-weight:700; color:#ffffff; }
   .ondertitel{ font-size:18px; color:#b3b3b3; margin-top:4px; }
   .klok{ text-align:right; }
   .klok .tijd{ font-size:34px; font-weight:750; font-variant-numeric:tabular-nums; color:#ffffff; line-height:1.05; }
@@ -83,8 +93,7 @@
   .wis{ width:54px; height:54px; flex:none; border-radius:50%; background:#3a3a3a; color:#ffffff;
     font-size:30px; line-height:1; display:none; align-items:center; justify-content:center;
     cursor:pointer; user-select:none; }
-  .zoekknop{ width:58px; height:58px; flex:none; border-radius:50%; background:${GROEN};
-    display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; }
+  .zoekknop{ display:none; }
   .zoekknop:active{ transform:scale(.94); }
   .zoekknop .loep i{ border-color:#000000; }
   .zoekknop .loep b{ background:#000000; }
@@ -92,16 +101,16 @@
   .laadstrook.aan{ background:${GROEN}; opacity:.75; }
   /* Secties */
   .sectiekop{ display:flex; justify-content:space-between; align-items:baseline; margin-top:22px; }
-  .sectiekop .sk-titel{ font-size:32px; font-weight:800; color:#ffffff; }
+  .sectiekop .sk-titel{ font-size:28px; font-weight:700; color:#ffffff; }
   .sectiekop .sk-context{ font-size:17px; color:#b3b3b3; }
   /* Radiokaarten */
   .radiorij{ display:flex; gap:22px; margin-top:14px; }
-  .rkaart{ width:240px; height:158px; flex:none; background:#181818; border:1px solid #343434;
+  .rkaart{ width:240px; height:158px; flex:none; background:#181818;
     border-radius:16px; padding:18px; cursor:pointer; user-select:none; position:relative; }
   .rkaart:active{ background:#282828; transform:scale(.99); }
   .rkaart.actief{ background:#282828; border:2px solid ${GROEN}; padding:17px; }
-  .rmono{ width:66px; height:66px; border-radius:10px; background:#282828; color:#ffffff;
-    font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .rmono{ width:80px; height:80px; border-radius:10px; background:#282828; color:#ffffff;
+    font-size:27px; font-weight:800; display:flex; align-items:center; justify-content:center; }
   .rmono img{ width:100%; height:100%; object-fit:cover; border-radius:10px; display:block; }
   .rkaart.actief .rmono{ background:#3a3a3a; }
   .rstatus{ position:absolute; top:20px; right:18px; font-size:15px; font-weight:600; color:#b3b3b3;
@@ -111,15 +120,15 @@
   .eq i{ width:3.5px; background:${GROEN}; border-radius:2px; display:block; }
   .eq i:nth-child(1){ height:13px; } .eq i:nth-child(2){ height:8px; } .eq i:nth-child(3){ height:11px; }
   .eq.aan{ display:flex; }
-  .rnaam{ font-size:21.5px; font-weight:750; line-height:1.18; color:#ffffff; margin-top:12px;
+  .rnaam{ font-size:19px; font-weight:700; line-height:1.18; color:#ffffff; margin-top:10px;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   /* Categorietegels */
   .tegels{ display:grid; grid-template-columns:repeat(4, 1fr); gap:22px; margin-top:14px; }
-  .tegel{ height:158px; background:#181818; border:1px solid #343434; border-radius:16px;
+  .tegel{ height:158px; background:#181818; border-radius:16px;
     padding:18px; cursor:pointer; user-select:none; position:relative; }
   .tegel:active{ background:#282828; }
   .tegel .rmono{ width:74px; height:74px; font-size:27px; border-radius:12px; }
-  .ttegelnaam{ font-size:25px; font-weight:750; color:#ffffff; margin-top:12px; }
+  .ttegelnaam{ font-size:22px; font-weight:700; color:#ffffff; margin-top:12px; }
   .tchev{ position:absolute; right:18px; bottom:16px; width:15px; height:15px;
     border-right:4px solid #b3b3b3; border-top:4px solid #b3b3b3; transform:rotate(45deg); }
   .bronfout{ margin-top:14px; padding:20px 22px; background:#181818; border:1px solid #343434;
@@ -181,15 +190,10 @@
   /* Spelerkeuze */
   .spelerpaneel{ background:#181818; border:1px solid #343434; border-radius:20px;
     padding:22px 24px; height:100%; display:flex; flex-direction:column; }
-  .spkop{ font-size:27px; font-weight:800; color:#ffffff; }
-  .spnu{ display:flex; align-items:center; gap:16px; background:#282828; border-radius:16px;
-    padding:16px 18px; margin-top:16px; }
+  .spkop{ font-size:27px; font-weight:700; color:#ffffff; }
   .spmono{ width:58px; height:58px; flex:none; border-radius:12px; background:#3a3a3a; color:#ffffff;
     font-size:19px; font-weight:800; display:flex; align-items:center; justify-content:center; }
   .spmono.rond{ border-radius:50%; }
-  .spnunaam{ font-size:22px; font-weight:700; color:#ffffff; }
-  .spnustatus{ font-size:16px; color:#b3b3b3; margin-top:2px; display:flex; align-items:center; gap:8px; }
-  .stip{ width:11px; height:11px; border-radius:50%; background:${GROEN}; flex:none; }
   .sprijen{ margin-top:16px; display:flex; flex-direction:column; gap:11px; }
   .sprij{ display:flex; align-items:center; gap:15px; height:82px; padding:0 18px 0 14px;
     border-radius:16px; border:1px solid transparent; cursor:pointer; user-select:none; position:relative; }
@@ -217,7 +221,7 @@
   .sbart img{ width:100%; height:100%; object-fit:cover; display:block; }
   .sbart .mono{ font-size:34px; font-weight:800; color:#ffffff; }
   .sbmeta{ flex:1; min-width:0; }
-  .sbbron{ font-size:14.5px; font-weight:700; letter-spacing:.12em; color:${GROEN};
+  .sbbron{ font-size:14.5px; font-weight:700; letter-spacing:.12em; color:#b3b3b3;
     text-transform:uppercase; }
   .sbtitel{ font-size:25px; font-weight:750; color:#ffffff; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis; margin-top:3px; }
@@ -256,15 +260,16 @@
     font-size:16.5px; color:#ffffff; cursor:pointer; user-select:none; flex:none; }
   .demp.actief{ border-color:${GROEN}; color:${GROEN}; }
   .volrij{ display:flex; align-items:center; gap:16px; }
-  .volknop{ width:54px; height:54px; flex:none; border-radius:50%; background:#282828;
+  .volknop{ width:62px; height:62px; flex:none; border-radius:50%; background:#282828;
     border:1px solid #3a3a3a; color:#ffffff; font-size:27px; display:flex; align-items:center;
     justify-content:center; cursor:pointer; user-select:none; }
   .volknop:active{ transform:scale(.92); }
-  .volknop.dicht, .volseg.dicht, .demp.dicht{ opacity:.35; pointer-events:none; }
-  .volseg{ flex:1; height:56px; display:flex; align-items:flex-end; gap:6px; touch-action:none;
-    cursor:pointer; padding:4px 2px; }
-  .volseg i{ flex:1; border-radius:3px 3px 2px 2px; background:#3d3d3d; display:block; }
-  .volseg i.vol{ background:${GROEN}; }
+  .volknop.dicht, .volspoor.dicht, .demp.dicht{ opacity:.35; pointer-events:none; }
+  .volspoor{ position:relative; flex:1; height:56px; cursor:pointer; touch-action:none; }
+  .volspoor .spoor{ position:absolute; left:0; right:0; top:25px; height:6px; border-radius:3px; background:#343434; }
+  .volspoor .vul{ position:absolute; left:0; top:25px; height:6px; border-radius:3px; background:${GROEN}; width:0%; }
+  .volspoor .knop{ position:absolute; top:28px; width:22px; height:22px; border-radius:50%; background:#ffffff;
+    transform:translate(-50%,-50%); box-shadow:0 2px 8px rgba(0,0,0,.45); left:0%; }
   .volpct{ width:62px; flex:none; text-align:right; font-size:20px; font-weight:700;
     font-variant-numeric:tabular-nums; color:#ffffff; }
   /* Navigatiebalk, gelijk aan de andere borden, actief is hier groen */
@@ -273,6 +278,40 @@
   .pnav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
     border:1px solid transparent; }
   .pnav a.active{ background:${GROEN}; color:#000000; font-weight:650; border-color:${GROEN}; }
+  /* Radiokaart: vaste groene speelknop als tik-aanwijzing */
+  .rspeel{ position:absolute; right:16px; bottom:16px; width:52px; height:52px; border-radius:50%;
+    background:${GROEN}; pointer-events:none; }
+  .rspeel::after{ content:""; position:absolute; left:20px; top:15px; border-left:17px solid #000000;
+    border-top:11px solid transparent; border-bottom:11px solid transparent; }
+  /* Grote speler (overlay, opent via de hoes in de speelbalk) */
+  .sbart{ cursor:pointer; }
+  .groot{ position:absolute; inset:0; background:#121212; z-index:6; display:none; }
+  .groot.open{ display:flex; }
+  .gssluit{ position:absolute; top:36px; left:44px; width:66px; height:66px; border-radius:50%;
+    background:#282828; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    user-select:none; z-index:2; }
+  .gssluit:active{ transform:scale(.94); }
+  .gssluit .chev{ width:19px; height:19px; border-left:5px solid #ffffff; border-bottom:5px solid #ffffff;
+    transform:rotate(-45deg); margin-top:-7px; }
+  .gskop{ position:absolute; top:56px; left:0; right:0; text-align:center; font-size:19px;
+    letter-spacing:.16em; color:#b3b3b3; text-transform:uppercase; font-weight:700; }
+  .groot-in{ margin:auto; width:1560px; display:flex; gap:68px; align-items:center; }
+  .grootart{ width:560px; height:560px; flex:none; border-radius:14px; overflow:hidden;
+    background:#282828; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 30px 80px rgba(0,0,0,.5); cursor:pointer; }
+  .grootart img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .grootart .mono{ font-size:120px; font-weight:800; color:#ffffff; }
+  .grootrechts{ flex:1; min-width:0; }
+  .gstitel{ font-size:45px; font-weight:700; line-height:1.14; color:#ffffff; margin-top:6px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .gsartiest{ font-size:25px; color:#b3b3b3; margin-top:9px; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; }
+  .groot .hoofdknop{ width:96px; height:96px; }
+  .groot .hoofdknop .drie{ border-left:32px solid #000000; border-top:21px solid transparent;
+    border-bottom:21px solid transparent; margin-left:7px; }
+  .groot .hoofdknop .pauze i{ width:12px; height:40px; }
+  .groot .skip{ width:74px; height:74px; }
+  .groot .vtrack{ height:8px; }
   `;
 
   var HTML = `
@@ -316,13 +355,6 @@
       <div class="rechts">
         <div class="spelerpaneel">
           <div class="spkop">Afspelen op</div>
-          <div class="spnu">
-            <div class="spmono" id="spnumono">JBL</div>
-            <div>
-              <div class="spnunaam" id="spnunaam">JBL Bar 800</div>
-              <div class="spnustatus"><span class="stip"></span><span id="spnustatus">Geselecteerd</span></div>
-            </div>
-          </div>
           <div class="sprijen" id="sprijen"></div>
           <div class="spuitleg">De keuze geldt voor radio, zoeken en bladeren. De speelbalk onderin stuurt altijd de gekozen speler.</div>
         </div>
@@ -352,9 +384,34 @@
         </div>
         <div class="volrij">
           <div class="volknop" id="volmin">−</div>
-          <div class="volseg" id="volseg"></div>
+          <div class="volspoor" id="volspoor"><div class="spoor"></div><div class="vul"></div><div class="knop"></div></div>
           <div class="volknop" id="volplus">+</div>
           <div class="volpct" id="volpct">--</div>
+        </div>
+      </div>
+    </div>
+    <div class="groot" id="grootspeler">
+      <div class="gssluit" id="gssluit"><span class="chev"></span></div>
+      <div class="gskop">Nu speelt</div>
+      <div class="groot-in">
+        <div class="grootart" id="gsart"><span class="mono">JBL</span></div>
+        <div class="grootrechts">
+          <div class="sbbron" id="gsbron"></div>
+          <div class="gstitel" id="gstitel">Niets aan het spelen</div>
+          <div class="gsartiest" id="gsartiest">Kies een zender of zoek iets op</div>
+          <div class="voortgang" id="gsvoortgang" style="margin-top:40px"></div>
+          <div class="sbtransport" style="margin-top:32px; gap:46px">
+            <div class="skip" id="gsprev"><span class="vorm"><span class="balk"></span><span class="drie-l"></span></span></div>
+            <div class="hoofdknop" id="gsplay"><span class="drie"></span></div>
+            <div class="skip" id="gsnext"><span class="vorm"><span class="drie-r"></span><span class="balk"></span></span></div>
+          </div>
+          <div class="volrij" style="margin-top:40px">
+            <div class="volknop" id="gsvolmin">−</div>
+            <div class="volspoor" id="gsvolspoor"><div class="spoor"></div><div class="vul"></div><div class="knop"></div></div>
+            <div class="volknop" id="gsvolplus">+</div>
+            <div class="volpct" id="gsvolpct">--</div>
+          </div>
+          <div class="sb-speler" id="gsspeler" style="margin-top:28px">Speelt op <b>JBL Bar 800</b></div>
         </div>
       </div>
     </div>
@@ -452,8 +509,10 @@
       this._el = {};
       ["stage","ktijd","kdatum","ondertitel","zoekbalk","zoekinput","zoekwis","zoekknop","laadstrook",
        "viewhome","radiorij","skcontext","tegels","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
-       "sprijen","spnumono","spnunaam","spnustatus","sbart","sbbron","sbtitel","sbartiest",
-       "skipprev","hoofdknop","skipnext","voortgang","sbspeler","demp","volmin","volseg","volplus","volpct"]
+       "sprijen","sbart","sbbron","sbtitel","sbartiest",
+       "skipprev","hoofdknop","skipnext","voortgang","sbspeler","demp","volmin","volspoor","volplus","volpct",
+       "grootspeler","gssluit","gsart","gsbron","gstitel","gsartiest","gsvoortgang",
+       "gsprev","gsplay","gsnext","gsvolmin","gsvolspoor","gsvolplus","gsvolpct","gsspeler"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
       // Staat
       this._speler = SPELERS[0].id;
@@ -495,10 +554,6 @@
           self._kiesSpeler(SPELERS[parseInt(rij.getAttribute("data-speler"), 10)].id);
         });
       });
-      // Volumesegmenten
-      var segHtml = "";
-      for (var si = 0; si < 10; si++) segHtml += '<i style="height:' + (12 + si * 2) + 'px"></i>';
-      this._el.volseg.innerHTML = segHtml;
       // Bediening
       this._el.hoofdknop.addEventListener("click", function () { self._speelPauze(); });
       this._el.skipprev.addEventListener("click", function () { self._skip(-1); });
@@ -512,6 +567,22 @@
           { is_volume_muted: !(s.attributes.is_volume_muted === true) }, { entity_id: self._speler });
       });
       this._el.terugknop.addEventListener("click", function () { self._terug(); });
+      // Grote speler openen/sluiten en bedienen
+      this._el.sbart.addEventListener("click", function () { self._openGroot(); });
+      this._el.gssluit.addEventListener("click", function () { self._sluitGroot(); });
+      this._el.gsart.addEventListener("click", function () { self._sluitGroot(); });
+      this._el.gsplay.addEventListener("click", function () { self._speelPauze(); });
+      this._el.gsprev.addEventListener("click", function () { self._skip(-1); });
+      this._el.gsnext.addEventListener("click", function () { self._skip(1); });
+      this._el.gsvolmin.addEventListener("click", function () { self._volStap(-0.08); });
+      this._el.gsvolplus.addEventListener("click", function () { self._volStap(0.08); });
+      // Bij "niet bereikbaar": tik op de melding laadt het bord opnieuw
+      [this._el.sbtitel, this._el.sbartiest, this._el.gstitel, this._el.gsartiest].forEach(function (elm) {
+        elm.addEventListener("click", function () {
+          var st = self._sp();
+          if (!st || st.state === "unavailable" || st.state === "unknown") window.location.reload();
+        });
+      });
       // Zoeken
       var inp = this._el.zoekinput;
       inp.addEventListener("focus", function () {
@@ -550,7 +621,8 @@
         if (self._zoekTimer) { clearTimeout(self._zoekTimer); self._zoekTimer = null; }
         self._zoekNu();
       });
-      this._bindVolSeg();
+      this._bindVolSpoor(this._el.volspoor);
+      this._bindVolSpoor(this._el.gsvolspoor);
       // Schaal en klok
       this._ro = new ResizeObserver(function () { self._fit(); });
       this._ro.observe(this);
@@ -671,8 +743,8 @@
           : esc(z.mono);
         return '<div class="rkaart" data-snel="' + i + '">' +
           '<div class="rmono">' + art + '</div>' +
-          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '">Radio</span></div>' +
-          '<div class="rnaam">' + esc(z.naam) + '</div></div>';
+          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '"></span></div>' +
+          '<div class="rnaam">' + esc(z.naam) + '</div><span class="rspeel"></span></div>';
       }).join("");
       Array.prototype.forEach.call(this._el.radiorij.querySelectorAll("[data-snel]"), function (tile) {
         tile.addEventListener("click", function () {
@@ -737,7 +809,7 @@
         var eq = tile.querySelector("[data-req]");
         if (eq) eq.classList.toggle("aan", actief);
         var tx = tile.querySelector("[data-rtekst]");
-        if (tx) tx.textContent = actief ? "Speelt" : "Radio";
+        if (tx) tx.textContent = actief ? "Speelt" : "";
       });
     }
     _tekenSpelers() {
@@ -745,15 +817,9 @@
       var root = this.shadowRoot;
       if (!root || !this._hass) return;
       var gekozen = this._spelerObj();
-      this._el.spnumono.textContent = gekozen.mono;
-      this._el.spnumono.className = "spmono" + (gekozen.vierkant ? "" : " rond");
-      this._el.spnunaam.textContent = gekozen.naam;
-      var gs = this._sp();
-      var gstaat = gs ? gs.state : "unavailable";
-      this._el.spnustatus.textContent = gstaat === "playing" ? "Speelt nu" :
-        gstaat === "unavailable" || gstaat === "unknown" ? "Niet bereikbaar" : "Geselecteerd";
       this._el.ondertitel.textContent = "Music Assistant · " + gekozen.naam;
       this._el.sbspeler.innerHTML = "Speelt op <b>" + esc(gekozen.naam) + "</b>";
+      this._el.gsspeler.innerHTML = "Speelt op <b>" + esc(gekozen.naam) + "</b>";
       Array.prototype.forEach.call(root.querySelectorAll("[data-speler]"), function (rij) {
         var p = SPELERS[parseInt(rij.getAttribute("data-speler"), 10)];
         var st = self._hass.states[p.id];
@@ -763,12 +829,14 @@
         var tx = rij.querySelector("[data-spstatus]");
         if (tx) {
           tx.textContent = (staat === "unavailable" || staat === "unknown") ? "Niet bereikbaar"
+            : (p.id === self._speler && staat === "playing") ? "Speelt nu · " + p.type
             : p.type + (staat === "playing" ? " · speelt" : "");
         }
       });
     }
     _updateBar() {
       var el = this._el;
+      var self = this;
       var s = this._sp();
       var a = s ? s.attributes : {};
       var staat = s ? s.state : "unavailable";
@@ -790,34 +858,55 @@
       } else {
         el.sbart.innerHTML = '<span class="mono">' + (zNu ? zNu.mono : this._spelerObj().mono) + "</span>";
       }
-      // Teksten
-      if (weg) {
-        el.sbbron.textContent = "";
-        el.sbtitel.textContent = "Music Assistant niet bereikbaar";
-        el.sbartiest.textContent = "Controleer de verbinding";
-      } else if (!a.media_title && (staat === "off" || staat === "idle")) {
-        el.sbbron.textContent = "";
-        el.sbtitel.textContent = staat === "off" ? "Speler staat uit" : "Niets aan het spelen";
-        el.sbartiest.textContent = "Kies een zender of zoek iets op";
+      // Grote speler: zelfde hoes, groter
+      if (pic && !this._badPics[picKey]) {
+        el.gsart.innerHTML = '<img src="' + esc(pic) + '" alt="">';
+        var gimg = el.gsart.querySelector("img");
+        gimg.onerror = function () {
+          self._badPics[picKey] = true;
+          self._barSig = null;
+          self._updateBar();
+        };
       } else {
-        el.sbbron.textContent = staat === "buffering" ? "Bufferen" :
-          zNu ? "Radio" : "Music Assistant";
-        el.sbtitel.textContent = a.media_title || this._spelerObj().naam;
+        el.gsart.innerHTML = '<span class="mono">' + (zNu ? zNu.mono : this._spelerObj().mono) + "</span>";
+      }
+      // Teksten (speelbalk en grote speler delen dezelfde inhoud)
+      var bBron = "", bTitel = "", bOnder = "";
+      if (weg) {
+        bTitel = "Music Assistant niet bereikbaar";
+        bOnder = "Tik op deze melding om het bord opnieuw te laden";
+      } else if (!a.media_title && (staat === "off" || staat === "idle")) {
+        bTitel = staat === "off" ? "Speler staat uit" : "Niets aan het spelen";
+        bOnder = "Kies een zender of zoek iets op";
+      } else {
+        bBron = staat === "buffering" ? "Bufferen" : zNu ? "Radio" : "Music Assistant";
+        bTitel = a.media_title || this._spelerObj().naam;
         var onder = [];
         if (a.media_artist) onder.push(a.media_artist);
         if (a.media_album_name) onder.push(a.media_album_name);
         if (!onder.length && zNu) onder.push("Live radio");
         else if (!onder.length && a.app_name) onder.push(a.app_name);
-        el.sbartiest.textContent = onder.join(" · ");
+        bOnder = onder.join(" · ");
       }
+      el.sbbron.textContent = bBron;
+      el.sbtitel.textContent = bTitel;
+      el.sbartiest.textContent = bOnder;
+      el.gsbron.textContent = bBron;
+      el.gstitel.textContent = bTitel;
+      el.gsartiest.textContent = bOnder;
       // Transport
-      el.hoofdknop.innerHTML = speelt
+      var knopHtml = speelt
         ? '<span class="pauze"><i></i><i></i></span>'
         : '<span class="drie"></span>';
+      el.hoofdknop.innerHTML = knopHtml;
+      el.gsplay.innerHTML = knopHtml;
       var feats = typeof a.supported_features === "number" ? a.supported_features : 0;
       el.hoofdknop.classList.toggle("dicht", weg);
+      el.gsplay.classList.toggle("dicht", weg);
       el.skipprev.classList.toggle("dicht", weg || staat === "off" || !(feats & 16));
       el.skipnext.classList.toggle("dicht", weg || staat === "off" || !(feats & 32));
+      el.gsprev.classList.toggle("dicht", weg || staat === "off" || !(feats & 16));
+      el.gsnext.classList.toggle("dicht", weg || staat === "off" || !(feats & 32));
       el.demp.classList.toggle("dicht", weg);
       el.demp.classList.toggle("actief", a.is_volume_muted === true);
       el.demp.textContent = a.is_volume_muted === true ? "Gedempt" : "Dempen";
@@ -834,21 +923,21 @@
       var sig = mode + "|" + dur;
       if (sig === this._vgSig) { this._tickVoortgang(); return; }
       this._vgSig = sig;
+      var htmlKlein = "", htmlGroot = "";
       if (mode === "prog") {
-        this._el.voortgang.innerHTML =
-          '<span class="vtijd" id="vg-l">0:00</span><div class="vtrack"><div class="vfill" id="vg-f" style="width:0%"></div></div><span class="vtijd rechts" id="vg-r">' + mmss(dur) + "</span>";
+        htmlKlein = '<span class="vtijd vg-l" id="vg-l">0:00</span><div class="vtrack"><div class="vfill vg-f" id="vg-f" style="width:0%"></div></div><span class="vtijd rechts vg-r" id="vg-r">' + mmss(dur) + "</span>";
+        htmlGroot = '<span class="vtijd vg-l">0:00</span><div class="vtrack"><div class="vfill vg-f" style="width:0%"></div></div><span class="vtijd rechts vg-r">' + mmss(dur) + "</span>";
       } else if (mode === "live") {
-        this._el.voortgang.innerHTML = '<div class="vlive" style="flex:1">Live radio</div>';
+        htmlKlein = htmlGroot = '<div class="vlive" style="flex:1">Live radio</div>';
       } else {
-        this._el.voortgang.innerHTML = '<div class="vlive" style="flex:1"></div>';
+        htmlKlein = htmlGroot = '<div class="vlive" style="flex:1"></div>';
       }
+      this._el.voortgang.innerHTML = htmlKlein;
+      this._el.gsvoortgang.innerHTML = htmlGroot;
       this._tickVoortgang();
     }
     _tickVoortgang() {
       if (!this._built || !this._el) return;
-      var root = this.shadowRoot;
-      var f = root.getElementById("vg-f");
-      if (!f) return;
       var s = this._sp();
       if (!s) return;
       var a = s.attributes;
@@ -860,9 +949,15 @@
         if (isFinite(t)) pos += (Date.now() - t) / 1000;
       }
       pos = Math.max(0, Math.min(dur, pos));
-      f.style.width = (dur > 0 ? (pos / dur) * 100 : 0) + "%";
-      var l = root.getElementById("vg-l");
-      if (l) l.textContent = mmss(pos);
+      var pct = (dur > 0 ? (pos / dur) * 100 : 0) + "%";
+      var tekst = mmss(pos);
+      [this._el.voortgang, this._el.gsvoortgang].forEach(function (houder) {
+        if (!houder) return;
+        var f = houder.querySelector(".vg-f");
+        if (f) f.style.width = pct;
+        var l = houder.querySelector(".vg-l");
+        if (l) l.textContent = tekst;
+      });
     }
     _effVol() {
       if (this._volSleep != null) return this._volSleep;
@@ -877,14 +972,32 @@
       var staat = s ? s.state : "unavailable";
       var weg = staat === "unavailable" || staat === "unknown";
       var vol = this._effVol();
-      el.volpct.textContent = vol === null ? "--" : Math.round(vol * 100) + "%";
-      var n = vol === null ? 0 : Math.round(vol * 10);
-      Array.prototype.forEach.call(el.volseg.querySelectorAll("i"), function (seg, i) {
-        seg.classList.toggle("vol", i < n);
-      });
+      this._paintSlider(el.volspoor, el.volpct, vol, weg);
+      this._paintSlider(el.gsvolspoor, el.gsvolpct, vol, weg);
       el.volmin.classList.toggle("dicht", weg);
       el.volplus.classList.toggle("dicht", weg);
-      el.volseg.classList.toggle("dicht", weg);
+      el.gsvolmin.classList.toggle("dicht", weg);
+      el.gsvolplus.classList.toggle("dicht", weg);
+    }
+    _paintSlider(spoor, pct, vol, weg) {
+      if (!spoor) return;
+      pct.textContent = vol === null ? "--" : Math.round(vol * 100) + "%";
+      var p = vol === null ? 0 : Math.round(vol * 100);
+      var vul = spoor.querySelector(".vul");
+      if (vul) vul.style.width = p + "%";
+      var knop = spoor.querySelector(".knop");
+      if (knop) knop.style.left = p + "%";
+      spoor.classList.toggle("dicht", weg);
+    }
+    _openGroot() {
+      this._groot = true;
+      this._el.grootspeler.classList.add("open");
+      this._vgSig = null;
+      this._tekenVoortgang();
+    }
+    _sluitGroot() {
+      this._groot = false;
+      this._el.grootspeler.classList.remove("open");
     }
     _speelPauze() {
       var nu = Date.now();
@@ -917,43 +1030,21 @@
       this._tekenVolume();
       this._call("media_player", "volume_set", { volume_level: nieuw }, { entity_id: this._speler });
     }
-    _bindVolSeg() {
-      var self = this, el = this._el.volseg, bezig = false;
-      function fractie(ev) {
-        var r = el.getBoundingClientRect();
-        return Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
-      }
+    _bindVolSpoor(el) {
+      if (!el) return;
+      var self = this;
       el.addEventListener("pointerdown", function (ev) {
         var s = self._sp();
         if (!s || s.state === "unavailable" || s.state === "unknown") return;
-        ev.preventDefault();
-        try { el.setPointerCapture(ev.pointerId); } catch (e) {}
-        bezig = true;
-        self._volSleep = fractie(ev);
-        self._volSig = null;
-        self._tekenVolume();
+        var r = el.getBoundingClientRect();
+        var frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+        var cur = self._effVol();
+        if (cur === null) return;
+        // Nooit een sprong naar vol: een tik zet het volume een stap
+        // richting de tik, net als de plus- en minknoppen.
+        if (frac > cur + 0.02) self._volStap(0.08);
+        else if (frac < cur - 0.02) self._volStap(-0.08);
       });
-      el.addEventListener("pointermove", function (ev) {
-        if (!bezig) return;
-        self._volSleep = fractie(ev);
-        self._volSig = null;
-        self._tekenVolume();
-      });
-      function klaar(commit) {
-        if (!bezig) return;
-        bezig = false;
-        var v = self._volSleep;
-        self._volSleep = null;
-        if (commit && v != null) {
-          var afgerond = Math.round(v * 100) / 100;
-          self._volLocal = { val: afgerond, until: Date.now() + 8000 };
-          self._call("media_player", "volume_set", { volume_level: afgerond }, { entity_id: self._speler });
-        }
-        self._volSig = null;
-        self._tekenVolume();
-      }
-      el.addEventListener("pointerup", function () { klaar(true); });
-      el.addEventListener("pointercancel", function () { klaar(false); });
     }
 
     /* ---------- Bladeren ---------- */
