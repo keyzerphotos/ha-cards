@@ -1,4 +1,4 @@
-/* Muziekbord v2.0 (3 nov 2026) — volledige herbouw op Alex' verzoek
+/* Muziekbord v2.0.1 (3 nov 2026) — volledige herbouw op Alex' verzoek
    ("gooi het maar helemaal op de schop, zorg dat het werkt en eruit ziet
    als Spotify"). Alleen dit bord verandert; de rest van het huis niet.
    Opzet volgens drie teamrapporten van 3 nov 2026 (HA/MA-API, Spotify-
@@ -55,7 +55,7 @@
   .klok .tijd{ font-size:34px; font-weight:750; font-variant-numeric:tabular-nums; color:#ffffff; line-height:1.05; }
   .klok .datum{ font-size:16px; color:#b3b3b3; margin-top:3px; text-transform:capitalize; }
   /* Hoofdgebied */
-  .hoofd{ position:absolute; left:44px; right:44px; top:118px; height:764px; display:flex; gap:28px; }
+  .hoofd{ position:absolute; left:44px; right:44px; top:126px; height:756px; display:flex; gap:28px; }
   .links{ width:1296px; flex:none; display:flex; flex-direction:column; }
   .rechts{ flex:1; min-width:0; }
   /* Zoekbalk (statisch, wordt nooit herbouwd) */
@@ -640,6 +640,9 @@
         // het originele adres staat dan als achtervoegsel in de content-id.
         if (a.media_content_id && String(a.media_content_id).slice(-ZENDERS[i].url.length) === ZENDERS[i].url) return ZENDERS[i];
         if (a.media_title && String(a.media_title) === ZENDERS[i].naam) return ZENDERS[i];
+        // Bij Efteling Kids Radio zet MA de zendernaam in artiest/album (live gezien 3 nov)
+        var meta = (a.media_artist || "") + " " + (a.media_album_name || "") + " " + (a.app_name || "");
+        if (meta.indexOf(ZENDERS[i].naam) >= 0) return ZENDERS[i];
       }
       return null;
     }
