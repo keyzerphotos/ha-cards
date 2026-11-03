@@ -1,8 +1,11 @@
-// draaiknop-card: sleepbare thermostaatring voor één climate-entiteit.
-// De ring is een conic-gradient (tekent bewezen in de tablet-WebViews, waar
-// inline-SVG dat niet doet); slepen gaat via pointer-events, de waarde snapt
-// op de stap van de entiteit (Tado: 0,5°) en wordt pas bij loslaten als
-// climate.set_temperature verstuurd, zodat een draai geen servicestorm geeft.
+// draaiknop-card v1.1: sleepbare thermostaatring voor één climate-entiteit.
+// Vormgeving naar het Instagram-voorbeeld dat Alex koos (3 nov 2026): lichte
+// frosted-glass kaart, een ring van losse streepjes die van blauw via groen
+// en geel naar oranje kleurt, een witte knop en een mint pil bovenin.
+// Techniek: de streepjes zijn gewone divs (tekenen bewezen in de tablet-
+// WebViews, waar inline-SVG dat niet doet); slepen gaat via pointer-events,
+// de waarde snapt op de stap van de entiteit (Tado: 0,5°) en wordt pas bij
+// loslaten als climate.set_temperature verstuurd.
 class DraaiknopCard extends HTMLElement {
   setConfig(config) {
     if (!config || !config.entity) {
@@ -32,20 +35,27 @@ class DraaiknopCard extends HTMLElement {
 
   _buildDom() {
     this.attachShadow({ mode: "open" });
+    const AANTAL = 46;
+    let ticks = "";
+    for (let i = 0; i < AANTAL; i++) ticks += `<div class="tick"></div>`;
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
         ha-card {
-          background: var(--ha-card-background, #111419);
-          border-radius: 18px;
-          padding: 18px 12px 14px;
+          display: block;
+          background: linear-gradient(160deg, #ffffff 0%, #edf3f6 100%);
+          border: 1px solid rgba(255,255,255,.95);
+          box-shadow: 0 14px 34px rgba(23,34,43,.16);
+          border-radius: 26px;
+          padding: 16px 12px 18px;
           box-sizing: border-box;
         }
-        .titel {
-          text-align: center;
-          color: var(--secondary-text-color, rgba(244,241,234,.55));
-          font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
-          margin-bottom: 8px;
+        .pil {
+          width: fit-content; margin: 0 auto 10px;
+          background: #d7f2ea; color: #14655a;
+          font-size: 12.5px; font-weight: 700;
+          letter-spacing: .13em; text-transform: uppercase;
+          padding: 5px 14px; border-radius: 999px;
         }
         .wrap {
           position: relative;
@@ -59,48 +69,55 @@ class DraaiknopCard extends HTMLElement {
         }
         .wrap:active { cursor: grabbing; }
         .ring { position: absolute; inset: 0; border-radius: 50%; }
+        .tick {
+          position: absolute; left: 50%; top: 50%;
+          width: 4.5px; height: 13px; border-radius: 3px;
+          margin: -6.5px 0 0 -2.25px;
+          background: rgba(23,34,43,.10);
+          pointer-events: none;
+        }
         .face {
           position: absolute; inset: 12.5%;
           border-radius: 50%;
-          background: radial-gradient(circle at 50% 38%, #1a1f27, #12151b 72%);
+          background: radial-gradient(circle at 50% 36%, #ffffff, #e9f0f3 74%);
           display: flex; flex-direction: column;
           align-items: center; justify-content: center;
           pointer-events: none;
           text-align: center;
         }
         .doel {
-          color: var(--primary-text-color, #f4f1ea);
-          font-size: 58px; font-weight: 600; line-height: 1;
+          color: #17222b;
+          font-size: 58px; font-weight: 700; line-height: 1;
           font-variant-numeric: tabular-nums;
         }
         .nu {
-          color: var(--secondary-text-color, rgba(244,241,234,.6));
+          color: #5c6d78;
           font-size: 15px; margin-top: 8px;
           display: flex; align-items: center; gap: 7px;
         }
-        .stip { width: 8px; height: 8px; border-radius: 50%; background: rgba(244,241,234,.3); }
-        .stip.aan { background: #e8873a; box-shadow: 0 0 8px rgba(232,135,58,.8); }
+        .stip { width: 8px; height: 8px; border-radius: 50%; background: rgba(23,34,43,.18); }
+        .stip.aan { background: #ef6a3a; box-shadow: 0 0 8px rgba(239,106,58,.75); }
         .rotor { position: absolute; inset: 0; pointer-events: none; }
         .knop {
           position: absolute; left: 50%; top: 6.25%;
           width: 27px; height: 27px; border-radius: 50%;
           transform: translate(-50%, -50%);
-          background: #f4f1ea;
-          border: 2px solid rgba(0,0,0,.25);
-          box-shadow: 0 2px 10px rgba(0,0,0,.55);
+          background: #ffffff;
+          border: 1px solid rgba(23,34,43,.07);
+          box-shadow: 0 3px 12px rgba(23,34,43,.28);
           transition: width .12s ease, height .12s ease;
         }
         .wrap.bezig .knop { width: 32px; height: 32px; }
         .onbeschikbaar {
-          color: var(--secondary-text-color, rgba(244,241,234,.6));
+          color: #5c6d78;
           text-align: center; padding: 34px 10px; font-size: 15px;
         }
       </style>
       <ha-card>
-        <div class="titel"></div>
+        <div class="pil"></div>
         <div class="wrap" tabindex="0" role="slider" aria-label="Doeltemperatuur">
           <div class="ring spoor"></div>
-          <div class="ring waarde"></div>
+          ${ticks}
           <div class="face">
             <div class="doel">--</div>
             <div class="nu"><span class="stip"></span><span class="nutekst"></span></div>
@@ -110,10 +127,10 @@ class DraaiknopCard extends HTMLElement {
         <div class="onbeschikbaar" hidden>Niet beschikbaar</div>
       </ha-card>`;
     this._el = {
-      titel: this.shadowRoot.querySelector(".titel"),
+      pil: this.shadowRoot.querySelector(".pil"),
       wrap: this.shadowRoot.querySelector(".wrap"),
       spoor: this.shadowRoot.querySelector(".spoor"),
-      waarde: this.shadowRoot.querySelector(".waarde"),
+      ticks: [...this.shadowRoot.querySelectorAll(".tick")],
       doel: this.shadowRoot.querySelector(".doel"),
       stip: this.shadowRoot.querySelector(".stip"),
       nutekst: this.shadowRoot.querySelector(".nutekst"),
@@ -126,6 +143,7 @@ class DraaiknopCard extends HTMLElement {
     w.addEventListener("pointerup", (ev) => this._stopSleep(ev));
     w.addEventListener("pointercancel", (ev) => this._stopSleep(ev));
     w.addEventListener("keydown", (ev) => this._toets(ev));
+    requestAnimationFrame(() => this._render());
   }
 
   _entiteit() {
@@ -148,11 +166,31 @@ class DraaiknopCard extends HTMLElement {
     return st && st.attributes.temperature != null ? st.attributes.temperature : null;
   }
 
+  // Kleurverloop van de ring: blauw (koud) via groen en geel naar oranje (warm).
+  _kleur(f) {
+    const stops = [
+      [0.0, [53, 166, 220]],
+      [0.45, [79, 192, 141]],
+      [0.7, [242, 193, 78]],
+      [1.0, [239, 106, 58]],
+    ];
+    for (let i = 1; i < stops.length; i++) {
+      if (f <= stops[i][0]) {
+        const [f0, c0] = stops[i - 1];
+        const [f1, c1] = stops[i];
+        const t = (f - f0) / (f1 - f0);
+        const c = c0.map((v, k) => Math.round(v + (c1[k] - v) * t));
+        return `rgb(${c[0]},${c[1]},${c[2]})`;
+      }
+    }
+    return "rgb(239,106,58)";
+  }
+
   _render() {
     if (!this._el) return;
     const st = this._entiteit();
     const naam = this._config.name || (st ? st.attributes.friendly_name : null) || this._config.entity;
-    this._el.titel.textContent = naam || "";
+    this._el.pil.textContent = naam || "";
     if (!st || st.state === "unavailable" || st.state === "unknown") {
       this._el.wrap.style.display = "none";
       this._el.onbeschikbaar.hidden = false;
@@ -168,11 +206,17 @@ class DraaiknopCard extends HTMLElement {
     const graden = f * 270;
     const verwarmt = st.attributes.hvac_action === "heating";
     const uit = st.state === "off";
-    const accent = uit ? "#8a8f98" : verwarmt ? "#e8873a" : "#d9a441";
     this._el.spoor.style.background =
-      "conic-gradient(from -135deg, rgba(244,241,234,.10) 0deg 270deg, transparent 270deg 360deg)";
-    this._el.waarde.style.background =
-      `conic-gradient(from -135deg, ${accent} 0deg ${graden}deg, transparent ${graden}deg 360deg)`;
+      "conic-gradient(from -135deg, rgba(23,34,43,.045) 0deg 270deg, transparent 270deg 360deg)";
+    // Streepjes: positie op de ringband en kleur tot aan de huidige waarde.
+    const straal = this._el.wrap.clientWidth * 0.4375;
+    const n = this._el.ticks.length;
+    this._el.ticks.forEach((tick, i) => {
+      const tf = i / (n - 1);
+      const hoek = -135 + tf * 270;
+      tick.style.transform = `rotate(${hoek}deg) translateY(${-straal}px)`;
+      tick.style.background = !uit && tf <= f + 0.001 ? this._kleur(tf) : "rgba(23,34,43,.10)";
+    });
     this._el.rotor.style.transform = `rotate(${-135 + graden}deg)`;
     this._el.doel.textContent = waarde == null ? "--" : this._fmt(waarde) + "°";
     const nu = st.attributes.current_temperature;
