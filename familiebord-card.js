@@ -1,4 +1,4 @@
-/* Familiebord home card v1.12 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.13 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -32,7 +32,13 @@
           volledige paginalading i.p.v. SPA-wissel)
    v1.12: Babyfoon wijst nu naar het dashboard /babyfoon-bord (iframe met
           dezelfde pagina); de directe /local/-link landde vanuit de HA-app
-          op het standaardoverzicht
+          op het standaardoverzicht.
+   v1.13: Muziekblok onder de camera's, op de Music Assistant-speler van de
+          JBL-bar (media_player.jbl_bar_800_3): hoesje, titel/artiest,
+          vorige/speel-pauze/volgende en volume. Zolang de HA-integratie nog
+          op de oude, gestopte MA-server wijst is die entiteit unavailable
+          en toont het blok eerlijk "Nog niet gekoppeld" in plaats van nep-
+          bediening. In portretstand verborgen (ruimte, net als Te doen).
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
    terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
@@ -136,6 +142,30 @@
   .cambtns{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
   .cambtn{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:13px 24px; font-size:19px; color:#d6d6d2; cursor:pointer; user-select:none; }
   .cambtn:active{ transform:scale(.96); border-color:rgba(217,164,65,.65); color:#f2ead8; }
+  .mus{ margin-top:26px; }
+  .musrow{ display:flex; gap:16px; margin-top:14px; align-items:center; }
+  .musart{ width:64px; height:64px; border-radius:14px; flex:none; background:linear-gradient(150deg,#1a1d21,#0c0e10); overflow:hidden; display:none; }
+  .musart img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .mustekst{ min-width:0; }
+  .mustitel{ font-size:24px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:334px; }
+  .mussub{ margin-top:5px; font-size:20px; color:#9ba1a8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:334px; }
+  .musctl{ display:flex; align-items:center; gap:12px; margin-top:14px; }
+  .mbtn{ width:56px; height:56px; border-radius:50%; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.03); display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; flex:none; color:#e8e6e1; }
+  .mbtn:active{ transform:scale(.93); border-color:rgba(217,164,65,.65); }
+  .mbtn.main{ width:64px; height:64px; background:#d9a441; border-color:#d9a441; }
+  .mbtn .tri{ width:0; height:0; border-left:17px solid #f4f4f2; border-top:11px solid transparent; border-bottom:11px solid transparent; margin-left:4px; }
+  .mbtn.main .tri{ border-left-color:#14100a; margin-left:5px; }
+  .mbtn .bars{ display:flex; gap:6px; }
+  .mbtn .bars i{ width:7px; height:24px; border-radius:2px; background:#f4f4f2; display:block; }
+  .mbtn.main .bars i{ background:#14100a; }
+  .mbtn .skip{ display:flex; align-items:center; gap:3px; }
+  .mbtn .skip .tri{ border-left:13px solid #f4f4f2; border-top:9px solid transparent; border-bottom:9px solid transparent; margin-left:0; }
+  .mbtn .skip .bar{ width:5px; height:22px; border-radius:2px; background:#f4f4f2; }
+  .mbtn .skip.rev{ transform:scaleX(-1); }
+  .mvol{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .mvol .pct{ font-size:21px; color:#9ba1a8; min-width:50px; text-align:center; font-variant-numeric:tabular-nums; }
+  .mvol .mbtn{ width:48px; height:48px; font-size:26px; }
+  .musmsg{ margin-top:14px; font-size:20px; color:#9ba1a8; font-weight:300; line-height:1.45; display:none; }
   .chip b{ color:#f4f4f2; font-weight:500; }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .dot{ width:8px; height:8px; }
@@ -168,6 +198,7 @@
   .stage.portrait .ringdisc .now{ font-size:96px; }
   .stage.portrait .right{ left:48px; right:48px; top:1090px; width:auto; }
   .stage.portrait .todolabel, .stage.portrait #todo{ display:none; }
+  .stage.portrait .mus{ display:none; }
   .stage.portrait .status{ margin-top:0; }
   .stage.portrait .srow{ padding:14px 0; }
   .stage.portrait .chips{ left:48px; right:48px; bottom:100px; flex-wrap:wrap; }
@@ -230,6 +261,27 @@
           <div class="cambtn" id="camcas">Cas</div>
         </div>
       </div>
+      <div class="mus">
+        <div class="blocklabel"><span class="caps">Muziek</span><span class="add" id="musgo">Music Assistant ›</span></div>
+        <div class="musrow">
+          <div class="musart" id="musart"><img id="musimg" alt=""></div>
+          <div class="mustekst">
+            <div class="mustitel" id="mustitel">JBL Bar 800</div>
+            <div class="mussub" id="mussub">…</div>
+          </div>
+        </div>
+        <div class="musmsg" id="musmsg"></div>
+        <div class="musctl" id="musctl">
+          <div class="mbtn" id="musprev"><div class="skip rev"><div class="tri"></div><div class="bar"></div></div></div>
+          <div class="mbtn main" id="musplay"><div class="tri"></div></div>
+          <div class="mbtn" id="musnext"><div class="skip"><div class="tri"></div><div class="bar"></div></div></div>
+          <div class="mvol">
+            <div class="mbtn" id="musvmin">−</div>
+            <div class="pct" id="musvpct">--%</div>
+            <div class="mbtn" id="musvplus">+</div>
+          </div>
+        </div>
+      </div>
     </aside>
     <nav class="chips" id="chips"></nav>
     <div class="pnav">
@@ -275,6 +327,8 @@
     ["Badkamer", "climate.badkamer_badkamer"]
   ];
 
+  var MA_BAR = "media_player.jbl_bar_800_3";
+
   class FamiliebordCard extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
@@ -311,7 +365,8 @@
       ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",
        "stepmin","stepplus","modeheat","modeschema","modeoff",
        "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot",
-       "camvoordeur","camnaud","camcas","beltitle","camname","camwhere"]
+       "camvoordeur","camnaud","camcas","beltitle","camname","camwhere",
+       "musgo","musart","musimg","mustitel","mussub","musmsg","musctl","musprev","musplay","musnext","musvmin","musvplus","musvpct"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
       this._room = 0;
       this._el.stepmin.addEventListener("click", function () { self._step(-0.5); });
@@ -328,6 +383,26 @@
         if (v.requestFullscreen) v.requestFullscreen();
       });
       this._el.todoadd.addEventListener("click", function () { self._addTodo(); });
+      this._el.musprev.addEventListener("click", function () { self._musSkip("media_previous_track"); });
+      this._el.musplay.addEventListener("click", function () { self._musPlay(); });
+      this._el.musnext.addEventListener("click", function () { self._musSkip("media_next_track"); });
+      this._el.musvmin.addEventListener("click", function () { self._musVol(-0.08); });
+      this._el.musvplus.addEventListener("click", function () { self._musVol(0.08); });
+      this._el.musimg.addEventListener("error", function () {
+        self._musPicBad = self._musPic;
+        self._el.musart.style.display = "none";
+        self._musSig = null;
+      });
+      this._el.musgo.addEventListener("click", function () {
+        var href = "/muziek-dashboard";
+        try {
+          window.history.pushState(null, "", href);
+          var e = new Event("location-changed", { bubbles: true, composed: true });
+          e.detail = { replace: false };
+          window.dispatchEvent(e);
+          setTimeout(function () { if (hostEl.isConnected && window.location.pathname !== href) window.location.href = href; }, 900);
+        } catch (err) { window.location.href = href; }
+      });
       this._ro = new ResizeObserver(function () { self._fit(); });
       this._ro.observe(this);
       this._onResize = function () { self._fit(); };
@@ -465,6 +540,89 @@
           self._update();
         });
       });
+      this._updateMusic();
+    }
+    _updateMusic() {
+      var el = this._el;
+      var s = this._st(MA_BAR);
+      if (!s || s.state === "unavailable" || s.state === "unknown") {
+        if (this._musSig !== "down") {
+          this._musSig = "down";
+          el.mustitel.textContent = "JBL Bar 800";
+          el.mussub.textContent = "Music Assistant";
+          el.musart.style.display = "none";
+          el.musctl.style.display = "none";
+          el.musmsg.style.display = "block";
+          el.musmsg.textContent = "Nog niet gekoppeld. Verbind de Music Assistant-integratie in Home Assistant opnieuw, dan werkt dit blok vanzelf.";
+        }
+        return;
+      }
+      var a = s.attributes;
+      var playing = s.state === "playing" || s.state === "buffering";
+      var title, sub;
+      if (playing || s.state === "paused") {
+        title = a.media_title || a.app_name || "Speelt af";
+        sub = [a.media_artist, a.media_album_name].filter(Boolean).join(" · ") || a.app_name || "JBL Bar 800";
+      } else if (s.state === "off") {
+        title = "JBL Bar 800"; sub = "Staat uit";
+      } else {
+        title = "JBL Bar 800"; sub = "Niets aan";
+      }
+      var pic = a.entity_picture || "";
+      var pickey = pic ? pic.split("?")[0] : "";
+      var vol = (this._musVolLocal && Date.now() < this._musVolLocal.until) ? this._musVolLocal.val
+        : (a.volume_level !== undefined && a.volume_level !== null && !isNaN(Number(a.volume_level)) ? Number(a.volume_level) : null);
+      var feat = a.supported_features || 0;
+      var sig = [s.state, title, sub, pickey, vol === null ? "-" : Math.round(vol * 100), feat].join("|");
+      if (sig === this._musSig) return;
+      this._musSig = sig;
+      el.musmsg.style.display = "none";
+      el.musctl.style.display = "flex";
+      el.mustitel.textContent = title;
+      el.mussub.textContent = sub;
+      if (pic && this._musPicBad !== pickey) {
+        el.musart.style.display = "block";
+        if (this._musPic !== pickey) { this._musPic = pickey; el.musimg.src = pic; }
+      } else {
+        el.musart.style.display = "none";
+      }
+      var ico = playing ? "bars" : "tri";
+      if (this._musIco !== ico) {
+        this._musIco = ico;
+        el.musplay.innerHTML = playing ? '<div class="bars"><i></i><i></i></div>' : '<div class="tri"></div>';
+      }
+      var canSkip = s.state !== "off" && feat !== 0;
+      el.musprev.style.display = (!canSkip || (feat & 16)) ? "flex" : "none";
+      el.musnext.style.display = (!canSkip || (feat & 32)) ? "flex" : "none";
+      if (s.state === "off") { el.musprev.style.display = "none"; el.musnext.style.display = "none"; }
+      el.musvpct.textContent = vol === null ? "--%" : Math.round(vol * 100) + "%";
+    }
+    _musPlay() {
+      var s = this._st(MA_BAR);
+      if (!s || s.state === "unavailable" || s.state === "unknown") return;
+      if (s.state === "off") { this._call("media_player", "turn_on", {}, { entity_id: MA_BAR }); return; }
+      var now = Date.now();
+      if (this._musLock && now < this._musLock) return;
+      this._musLock = now + 1500;
+      this._call("media_player", "media_play_pause", {}, { entity_id: MA_BAR });
+    }
+    _musSkip(service) {
+      var s = this._st(MA_BAR);
+      if (!s || s.state === "unavailable" || s.state === "unknown" || s.state === "off") return;
+      this._call("media_player", service, {}, { entity_id: MA_BAR });
+    }
+    _musVol(d) {
+      var s = this._st(MA_BAR);
+      if (!s || s.state === "unavailable" || s.state === "unknown") return;
+      var cur = null;
+      if (this._musVolLocal && Date.now() < this._musVolLocal.until) cur = this._musVolLocal.val;
+      else if (s.attributes.volume_level !== undefined && s.attributes.volume_level !== null) cur = Number(s.attributes.volume_level);
+      if (cur === null || isNaN(cur)) return;
+      var nv = Math.round(Math.max(0, Math.min(1, cur + d)) * 100) / 100;
+      this._musVolLocal = { val: nv, until: Date.now() + 8000 };
+      this._call("media_player", "volume_set", { volume_level: nv }, { entity_id: MA_BAR });
+      this._musSig = null;
+      this._updateMusic();
     }
     _call(domain, service, data, target) {
       if (!this._hass) return;
