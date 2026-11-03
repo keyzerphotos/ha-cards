@@ -1,4 +1,4 @@
-/* Muziekbord v2.0.1 (3 nov 2026) — volledige herbouw op Alex' verzoek
+/* Muziekbord v2.2 (3 nov 2026) — volledige herbouw op Alex' verzoek
    ("gooi het maar helemaal op de schop, zorg dat het werkt en eruit ziet
    als Spotify"). Alleen dit bord verandert; de rest van het huis niet.
    Opzet volgens drie teamrapporten van 3 nov 2026 (HA/MA-API, Spotify-
@@ -18,6 +18,16 @@
      _fit bevriezen zolang het zoekveld focus heeft (schermtoetsenbord);
      optimistisch volume met verval en 1500 ms speelvergrendeling zoals
      het familiebord-muziekblok.
+   v2.0.1: zenderherkenning ook op naam in artiest/album + kopfix.
+   v2.2: de snelkeuzerij volgt nu de radiofavorieten uit Music Assistant
+   (music_assistant.get_library, media_type radio, favorite, max 5;
+   laden bij start en daarna elke 5 min via de hass-setter). Favorieten
+   spelen via music_assistant.play_media met hun library-uri. Zijn er
+   geen favorieten, dan valt de rij terug op de vijf vaste zenders en
+   zegt de contextregel eerlijk "Vaste zenders". Zo wisselt Alex de
+   snelkeuzes zelf: favorieten beheren in de MA-app of MA-webinterface.
+   Bewust NIET in deze versie: de grote speler uit de lokale v2.1-schets
+   (tik op de hoes); die push wees Alex op 3 nov 2026 af.
    Terugval: Lovelace-resource terugzetten op commit 647d8244 (v1.0,
    Cast-speler) volstaat; dit bestand hoeft daarvoor niet terug. */
 (function () {
@@ -92,6 +102,7 @@
   .rkaart.actief{ background:#282828; border:2px solid ${GROEN}; padding:17px; }
   .rmono{ width:66px; height:66px; border-radius:10px; background:#282828; color:#ffffff;
     font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .rmono img{ width:100%; height:100%; object-fit:cover; border-radius:10px; display:block; }
   .rkaart.actief .rmono{ background:#3a3a3a; }
   .rstatus{ position:absolute; top:20px; right:18px; font-size:15px; font-weight:600; color:#b3b3b3;
     display:flex; align-items:center; gap:7px; }
@@ -287,7 +298,7 @@
         </div>
         <div class="laadstrook" id="laadstrook"></div>
         <div id="viewhome">
-          <div class="sectiekop"><span class="sk-titel">Snelkeuze</span><span class="sk-context">5 zenders</span></div>
+          <div class="sectiekop"><span class="sk-titel">Snelkeuze</span><span class="sk-context" id="skcontext">Vaste zenders</span></div>
           <div class="radiorij" id="radiorij"></div>
           <div class="sectiekop"><span class="sk-titel">Bladeren</span><span class="sk-context">Music Assistant</span></div>
           <div class="tegels" id="tegels"></div>
@@ -440,7 +451,7 @@
       });
       this._el = {};
       ["stage","ktijd","kdatum","ondertitel","zoekbalk","zoekinput","zoekwis","zoekknop","laadstrook",
-       "viewhome","radiorij","tegels","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
+       "viewhome","radiorij","skcontext","tegels","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
        "sprijen","spnumono","spnunaam","spnustatus","sbart","sbbron","sbtitel","sbartiest",
        "skipprev","hoofdknop","skipnext","voortgang","sbspeler","demp","volmin","volseg","volplus","volpct"]
         .forEach(function (id) { self._el[id] = root.getElementById(id); });
@@ -462,18 +473,15 @@
       this._listBron = null;
       this._listToon = MAX_TOON;
       this._zoekTimer = null;
-      // Radio snelkeuze (statisch)
-      this._el.radiorij.innerHTML = ZENDERS.map(function (z, i) {
-        return '<div class="rkaart" data-zender="' + i + '">' +
-          '<div class="rmono">' + z.kort + '</div>' +
-          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '">Radio</span></div>' +
-          '<div class="rnaam">' + esc(z.naam) + '</div></div>';
-      }).join("");
-      Array.prototype.forEach.call(this._el.radiorij.querySelectorAll("[data-zender]"), function (tile) {
-        tile.addEventListener("click", function () {
-          self._speelZender(ZENDERS[parseInt(tile.getAttribute("data-zender"), 10)]);
-        });
+      // Radio snelkeuze: volgt de radiofavorieten uit Music Assistant;
+      // zonder favorieten de vijf vaste zenders (zie _laadFavorieten).
+      this._favModus = false;
+      this._favVoor = 0;
+      this._favBezig = false;
+      this._snel = ZENDERS.map(function (z) {
+        return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null };
       });
+      this._tekenSnelkeuze();
       // Spelerkeuze (statisch)
       this._el.sprijen.innerHTML = SPELERS.map(function (p, i) {
         return '<div class="sprij" data-speler="' + i + '">' +
@@ -608,6 +616,10 @@
       if (hass.connection && this._rootVoor !== this._speler && !this._rootBezig) {
         this._laadRoot();
       }
+      // Snelkeuze-favorieten laden/verversen (bij start, daarna elke 5 min)
+      if (hass.callService && !this._favBezig && Date.now() - (this._favVoor || 0) > 300000) {
+        this._laadFavorieten();
+      }
       var s = this._sp();
       var a = s ? s.attributes : {};
       var pic = a.entity_picture ? String(a.entity_picture).split("?")[0] : "";
@@ -627,32 +639,98 @@
       }).join("|") + "#" + this._speler;
       if (psig !== this._spelerSig) { this._spelerSig = psig; this._tekenSpelers(); }
       var zNu = this._actieveZender();
-      var zsig = zNu ? zNu.url : "";
+      var zsig = zNu ? (zNu.url || zNu.uri || zNu.naam) : "";
       if (zsig !== this._zenderSig) { this._zenderSig = zsig; this._tekenRadio(); }
     }
     _actieveZender() {
       var s = this._sp();
       if (!s || (s.state !== "playing" && s.state !== "paused")) return null;
       var a = s.attributes;
-      for (var i = 0; i < ZENDERS.length; i++) {
-        if (a.media_content_id && String(a.media_content_id) === ZENDERS[i].url) return ZENDERS[i];
-        // MA herschrijft kale URL's naar builtin://radio/<url> (live gezien 3 nov):
-        // het originele adres staat dan als achtervoegsel in de content-id.
-        if (a.media_content_id && String(a.media_content_id).slice(-ZENDERS[i].url.length) === ZENDERS[i].url) return ZENDERS[i];
-        if (a.media_title && String(a.media_title) === ZENDERS[i].naam) return ZENDERS[i];
+      var lijst = this._snel || [];
+      for (var i = 0; i < lijst.length; i++) {
+        var it = lijst[i];
+        if (it.uri && a.media_content_id && String(a.media_content_id) === it.uri) return it;
+        if (it.url) {
+          if (a.media_content_id && String(a.media_content_id) === it.url) return it;
+          // MA herschrijft kale URL's naar builtin://radio/<url> (live gezien 3 nov):
+          // het originele adres staat dan als achtervoegsel in de content-id.
+          if (a.media_content_id && String(a.media_content_id).slice(-it.url.length) === it.url) return it;
+        }
+        if (a.media_title && String(a.media_title) === it.naam) return it;
         // Bij Efteling Kids Radio zet MA de zendernaam in artiest/album (live gezien 3 nov)
         var meta = (a.media_artist || "") + " " + (a.media_album_name || "") + " " + (a.app_name || "");
-        if (meta.indexOf(ZENDERS[i].naam) >= 0) return ZENDERS[i];
+        if (meta.indexOf(it.naam) >= 0) return it;
       }
       return null;
+    }
+    _tekenSnelkeuze() {
+      var self = this;
+      this._el.radiorij.innerHTML = this._snel.map(function (z, i) {
+        var art = z.img
+          ? '<img src="' + esc(z.img) + '" alt="" onerror="this.remove()">'
+          : esc(z.mono);
+        return '<div class="rkaart" data-snel="' + i + '">' +
+          '<div class="rmono">' + art + '</div>' +
+          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '">Radio</span></div>' +
+          '<div class="rnaam">' + esc(z.naam) + '</div></div>';
+      }).join("");
+      Array.prototype.forEach.call(this._el.radiorij.querySelectorAll("[data-snel]"), function (tile) {
+        tile.addEventListener("click", function () {
+          var z = self._snel[parseInt(tile.getAttribute("data-snel"), 10)];
+          if (!z) return;
+          if (z.uri) self._speelFav(z); else self._speelZender(z);
+        });
+      });
+      if (this._el.skcontext) {
+        this._el.skcontext.textContent = this._favModus
+          ? "Favorieten uit Music Assistant"
+          : "Vaste zenders";
+      }
+      this._zenderSig = null;
+      this._tekenRadio();
+    }
+    _laadFavorieten() {
+      if (!this._hass || !this._hass.callService) return;
+      var self = this;
+      this._favBezig = true;
+      var p;
+      try {
+        p = this._hass.callService("music_assistant", "get_library",
+          { config_entry_id: MA_ENTRY, media_type: "radio", favorite: true, limit: 5 },
+          undefined, false, true);
+      } catch (e) { p = null; }
+      if (!p || !p.then) { this._favBezig = false; this._favVoor = Date.now(); return; }
+      this._metTimeout(p, 12000).then(function (res) {
+        self._favBezig = false;
+        self._favVoor = Date.now();
+        if (!self.isConnected) return;
+        var items = (res && res.response && res.response.items) || (res && res.items) || [];
+        var favs = [];
+        items.forEach(function (it) {
+          if (!it || !it.uri || !it.name) return;
+          var img = null;
+          if (typeof it.image === "string") img = it.image;
+          else if (it.image && typeof it.image.path === "string") img = it.image.path;
+          favs.push({ naam: String(it.name), mono: monoVan(it.name), url: null, uri: String(it.uri), img: img });
+        });
+        self._favModus = favs.length > 0;
+        self._snel = self._favModus ? favs.slice(0, 5) : ZENDERS.map(function (z) {
+          return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null };
+        });
+        self._tekenSnelkeuze();
+      }).catch(function () {
+        self._favBezig = false;
+        self._favVoor = Date.now();
+      });
     }
     _tekenRadio() {
       var zNu = this._actieveZender();
       var root = this.shadowRoot;
       if (!root) return;
-      Array.prototype.forEach.call(root.querySelectorAll("[data-zender]"), function (tile) {
-        var z = ZENDERS[parseInt(tile.getAttribute("data-zender"), 10)];
-        var actief = !!zNu && zNu.url === z.url;
+      var self = this;
+      Array.prototype.forEach.call(root.querySelectorAll("[data-snel]"), function (tile) {
+        var z = (self._snel || [])[parseInt(tile.getAttribute("data-snel"), 10)];
+        var actief = !!z && !!zNu && z === zNu;
         tile.classList.toggle("actief", actief);
         var st = tile.querySelector("[data-rstatus]");
         if (st) st.classList.toggle("speelt", actief);
@@ -710,7 +788,7 @@
           self._updateBar();
         };
       } else {
-        el.sbart.innerHTML = '<span class="mono">' + (zNu ? zNu.kort : this._spelerObj().mono) + "</span>";
+        el.sbart.innerHTML = '<span class="mono">' + (zNu ? zNu.mono : this._spelerObj().mono) + "</span>";
       }
       // Teksten
       if (weg) {
@@ -1195,6 +1273,11 @@
     _speelZender(z) {
       this._call("media_player", "play_media",
         { media_content_id: z.url, media_content_type: "music", enqueue: "replace" },
+        { entity_id: this._speler });
+    }
+    _speelFav(z) {
+      this._call("music_assistant", "play_media",
+        { media_id: z.uri, media_type: "radio", enqueue: "replace" },
         { entity_id: this._speler });
     }
     _kiesSpeler(id) {
