@@ -235,6 +235,7 @@
     <div class="pnav">
       <a href="/familie-bord" class="active">Home</a>
       <a href="/keuken-bord">Keuken</a>
+      <a href="/muziek-dashboard">Muziek</a>
       <a href="/energie-bord">Energie</a>
       <a href="/auto-bord">Auto</a>
       <a href="/stofzuiger-bord">Stofzuiger</a>
