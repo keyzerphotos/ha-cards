@@ -1,4 +1,6 @@
 /*
+  Muziekbord v2.4.1 - als v2.4, plus RADIONL Kids als tweede vaste zender
+  (met TuneIn-logo; vaste zenders kunnen nu een eigen logoplaatje dragen).
   Muziekbord v2.4 - Spotify-appstijl, volwassen uitgewerkt (route A, 4 nov 2026).
   Zwart canvas (#000), chips als enige categorienavigatie (actief alleen als
   de categorie echt bestaat; ontbrekende categorieen worden grijs), snelkeuze
@@ -419,6 +421,7 @@
   ];
   var ZENDERS = [
     { naam: "Efteling Kids Radio", kort: "EK", url: "http://25243.live.streamtheworld.com:3690/TLPSTR07_SC" },
+    { naam: "RADIONL Kids", kort: "RK", url: "https://stream.radionlkids.nl/rnlkids", img: "https://cdn-profiles.tunein.com/s301909/images/logod.png" },
     { naam: "NPO Radio 2", kort: "R2", url: "https://icecast.omroep.nl/radio2-bb-mp3" },
     { naam: "NPO 3FM", kort: "3FM", url: "https://icecast.omroep.nl/3fm-bb-mp3" },
     { naam: "Radio 538", kort: "538", url: "https://21223.live.streamtheworld.com/RADIO538.mp3" },
@@ -537,7 +540,7 @@
       this._voorjou = [];
       this._favBezig = false;
       this._snel = ZENDERS.map(function (z) {
-        return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null };
+        return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: z.img || null };
       });
       this._tekenSnelkeuze();
       // Chips: de enige categorienavigatie. Actief wordt een chip pas als
@@ -819,7 +822,7 @@
             var dubbel = snel.some(function (b) {
               return b.naam === z.naam || (b.url && b.url === z.url);
             });
-            if (!dubbel) snel.push({ naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null });
+            if (!dubbel) snel.push({ naam: z.naam, mono: z.kort, url: z.url, uri: null, img: z.img || null });
           });
         }
         self._snel = snel;
