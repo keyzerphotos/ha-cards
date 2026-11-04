@@ -1,45 +1,17 @@
-/* Muziekbord v2.3 (3 nov 2026) — volledige herbouw op Alex' verzoek
-   ("gooi het maar helemaal op de schop, zorg dat het werkt en eruit ziet
-   als Spotify"). Alleen dit bord verandert; de rest van het huis niet.
-   Opzet volgens drie teamrapporten van 3 nov 2026 (HA/MA-API, Spotify-
-   ontwerp, technische review):
-   - Speler is Music Assistant (standaard media_player.jbl_bar_800_3),
-     met spelerkeuze: bar, keuken, nachtkastje, huiskamer, groep.
-   - Bladeren via WS media_player/browse_media, zoeken primair via de
-     service music_assistant.search (gegroepeerd), terugval WS
-     media_player/search_media. Afspelen met de content-id/type letterlijk
-     uit het antwoord, altijd enqueue "replace".
-   - Look: Spotify-desktop. Achtergrond #121212, panelen #181818,
-     tegels #282828, lijnen #343434, groen #1DB954, tekst wit, sub #b3b3b3.
-     Speelbalk onderin met voortgang en een gesegmenteerde volumebalk.
-   - Bouwregels uit de review: DOM één keer bouwen en nooit herbouwen bij
-     hass-updates; UI-state op de instantie; volgnummer + spelercheck op
-     elke async respons; debounce 500 ms op zoeken; browse-cache per node;
-     _fit bevriezen zolang het zoekveld focus heeft (schermtoetsenbord);
-     optimistisch volume met verval en 1500 ms speelvergrendeling zoals
-     het familiebord-muziekblok.
-   v2.0.1: zenderherkenning ook op naam in artiest/album + kopfix.
-   v2.2: de snelkeuzerij volgt nu de radiofavorieten uit Music Assistant
-   (music_assistant.get_library, media_type radio, favorite, max 5;
-   laden bij start en daarna elke 5 min via de hass-setter). Favorieten
-   spelen via music_assistant.play_media met hun library-uri. Zijn er
-   geen favorieten, dan valt de rij terug op de vijf vaste zenders en
-   zegt de contextregel eerlijk "Vaste zenders". Zo wisselt Alex de
-   snelkeuzes zelf: favorieten beheren in de MA-app of MA-webinterface.
-   Bewust NIET in deze versie: de grote speler uit de lokale v2.1-schets
-   (tik op de hoes); die push wees Alex op 3 nov 2026 af.
-   v2.3: ontwerpteamronde van 3 nov 2026 verwerkt, plus de grote speler
-   uit v2.1 alsnog erbij (Alex' akkoord): tik op de hoes opent de
-   schermvullende Nu-speelt-weergave. Verder: kaarten randloos met een
-   vaste groene speelknop op de radiokaarten, groene zoekknop weg, het
-   dubbele speelt-nu-blok uit het spelerspaneel geschrapt (de status
-   staat nu in de gekozen rij), de volumesegmenten vervangen door een
-   dunne slider die per tik een stap zet (nooit een sprong naar vol),
-   rustigere typografie, het bronlabel grijs in plaats van groen, en
-   bij "niet bereikbaar" laadt het bord opnieuw via een tik op de
-   meldingstekst.
-   Terugval: Lovelace-resource terugzetten op commit 647d8244 (v1.0,
-   Cast-speler) volstaat; dit bestand hoeft daarvoor niet terug. */
+/*
+  Muziekbord v2.4 - Spotify-appstijl, volwassen uitgewerkt (route A, 4 nov 2026).
+  Zwart canvas (#000), chips als enige categorienavigatie (actief alleen als
+  de categorie echt bestaat; ontbrekende categorieen worden grijs), snelkeuze
+  als compact raster van 3 kolommen (MA-radiofavorieten, max 6, aangevuld met
+  vaste zenders zodat het raster vol is; logo met letterterugval erachter),
+  sectie "Iets voor jou" met echte bibliotheekitems (albums, anders
+  afspeellijsten; verborgen als de bibliotheek leeg is), zwevende afgeronde
+  speelbalk met dun voortgangslijntje aan de onderrand (volumeknoppen en
+  slider uit v2.3 behouden), rechterpaneel "Afspelen op" blijft.
+  Grote speler (tik op de hoes) en alle v2.3-werking (zoeken via
+  music_assistant.search, bladeren via browse_media, races/seq-bewaking,
+  speel-lock, optimistisch volume) zijn ongewijzigd overgenomen.
+*/
 (function () {
   "use strict";
 
@@ -64,7 +36,7 @@
   .stage{
     position:relative; width:1920px; height:1200px; transform-origin: top left;
     font-family:'MBInter','Inter','Segoe UI',Roboto,Arial,sans-serif;
-    background:#121212; color:#ffffff; overflow:hidden; -webkit-font-smoothing:antialiased;
+    background:#000000; color:#ffffff; overflow:hidden; -webkit-font-smoothing:antialiased;
   }
   /* Kop */
   .kop{ position:absolute; left:44px; right:44px; top:30px; display:flex;
@@ -103,16 +75,7 @@
   .sectiekop{ display:flex; justify-content:space-between; align-items:baseline; margin-top:22px; }
   .sectiekop .sk-titel{ font-size:28px; font-weight:700; color:#ffffff; }
   .sectiekop .sk-context{ font-size:17px; color:#b3b3b3; }
-  /* Radiokaarten */
-  .radiorij{ display:flex; gap:22px; margin-top:14px; }
-  .rkaart{ width:240px; height:158px; flex:none; background:#181818;
-    border-radius:16px; padding:18px; cursor:pointer; user-select:none; position:relative; }
-  .rkaart:active{ background:#282828; transform:scale(.99); }
-  .rkaart.actief{ background:#282828; border:2px solid ${GROEN}; padding:17px; }
-  .rmono{ width:80px; height:80px; border-radius:10px; background:#282828; color:#ffffff;
-    font-size:27px; font-weight:800; display:flex; align-items:center; justify-content:center; }
-  .rmono img{ width:100%; height:100%; object-fit:cover; border-radius:10px; display:block; }
-  .rkaart.actief .rmono{ background:#3a3a3a; }
+  /* Snelkeuzeraster (appstijl) */
   .rstatus{ position:absolute; top:20px; right:18px; font-size:15px; font-weight:600; color:#b3b3b3;
     display:flex; align-items:center; gap:7px; }
   .rstatus.speelt{ color:${GROEN}; font-weight:700; }
@@ -122,15 +85,6 @@
   .eq.aan{ display:flex; }
   .rnaam{ font-size:19px; font-weight:700; line-height:1.18; color:#ffffff; margin-top:10px;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  /* Categorietegels */
-  .tegels{ display:grid; grid-template-columns:repeat(4, 1fr); gap:22px; margin-top:14px; }
-  .tegel{ height:158px; background:#181818; border-radius:16px;
-    padding:18px; cursor:pointer; user-select:none; position:relative; }
-  .tegel:active{ background:#282828; }
-  .tegel .rmono{ width:74px; height:74px; font-size:27px; border-radius:12px; }
-  .ttegelnaam{ font-size:22px; font-weight:700; color:#ffffff; margin-top:12px; }
-  .tchev{ position:absolute; right:18px; bottom:16px; width:15px; height:15px;
-    border-right:4px solid #b3b3b3; border-top:4px solid #b3b3b3; transform:rotate(45deg); }
   .bronfout{ margin-top:14px; padding:20px 22px; background:#181818; border:1px solid #343434;
     border-radius:16px; font-size:18px; color:#b3b3b3; line-height:1.45; }
   .bronfout b{ color:#ffffff; }
@@ -188,7 +142,7 @@
     background:${GROEN}; color:#000000; font-size:19px; font-weight:700; cursor:pointer; user-select:none; }
   .leeg .lknop.grijs{ background:#282828; color:#ffffff; border:1px solid #3a3a3a; }
   /* Spelerkeuze */
-  .spelerpaneel{ background:#181818; border:1px solid #343434; border-radius:20px;
+  .spelerpaneel{ background:#181818; border:none; border-radius:20px;
     padding:22px 24px; height:100%; display:flex; flex-direction:column; }
   .spkop{ font-size:27px; font-weight:700; color:#ffffff; }
   .spmono{ width:58px; height:58px; flex:none; border-radius:12px; background:#3a3a3a; color:#ffffff;
@@ -212,9 +166,13 @@
     height:12px; border-right:3.5px solid #000000; border-bottom:3.5px solid #000000; transform:rotate(42deg); }
   .spuitleg{ margin-top:auto; font-size:16px; color:#b3b3b3; line-height:1.5; }
   /* Speelbalk */
-  .speelbalk{ position:absolute; left:44px; right:44px; top:898px; height:172px;
-    background:#181818; border:1px solid #343434; border-top:2px solid #343434; border-radius:20px;
-    display:flex; align-items:center; padding:0 30px; gap:28px; }
+  .speelbalk{ position:absolute; left:24px; right:24px; top:892px; height:158px;
+    background:#262626; border:1px solid #343434; border-radius:18px; box-shadow:0 14px 34px rgba(0,0,0,.5);
+    display:flex; align-items:center; padding:0 26px; gap:28px; }
+  .speelbalk .voortgang{ position:absolute; left:22px; right:22px; bottom:12px; margin:0; }
+  .speelbalk .vtijd{ display:none; }
+  .speelbalk .vtrack{ height:5px; border-radius:3px; }
+  .speelbalk .vfill{ border-radius:3px; }
   .sb-links{ width:520px; flex:none; display:flex; align-items:center; gap:20px; min-width:0; }
   .sbart{ width:104px; height:104px; flex:none; border-radius:10px; overflow:hidden;
     background:#282828; display:flex; align-items:center; justify-content:center; }
@@ -278,14 +236,36 @@
   .pnav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
     border:1px solid transparent; }
   .pnav a.active{ background:${GROEN}; color:#000000; font-weight:650; border-color:${GROEN}; }
-  /* Radiokaart: vaste groene speelknop als tik-aanwijzing */
-  .rspeel{ position:absolute; right:16px; bottom:16px; width:52px; height:52px; border-radius:50%;
-    background:${GROEN}; pointer-events:none; }
-  .rspeel::after{ content:""; position:absolute; left:20px; top:15px; border-left:17px solid #000000;
-    border-top:11px solid transparent; border-bottom:11px solid transparent; }
+  /* v2.4-proef: Spotify-appstijl (chips, rasterkaarten, hoesrij) */
+  .chips{ display:flex; gap:12px; margin:20px 0 2px; flex:none; }
+  .chip{ padding:13px 28px; border-radius:999px; background:#232323; color:#ffffff;
+    font-size:19px; font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; }
+  .chip.actief{ background:${GROEN}; color:#000000; }
+  .chip.uit{ opacity:.38; cursor:default; }
+  .raster{ display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:14px; }
+  .rkort{ display:flex; align-items:center; background:#232323; border-radius:12px; height:98px;
+    overflow:hidden; cursor:pointer; position:relative; padding-right:18px; user-select:none; }
+  .rkort:active{ background:#2e2e2e; }
+  .rkort.actief{ background:#2e2e2e; outline:2px solid ${GROEN}; outline-offset:-2px; }
+  .rkort .rart{ width:98px; height:98px; flex:none; background:#333333; display:flex;
+    align-items:center; justify-content:center; font-size:26px; font-weight:800;
+    overflow:hidden; position:relative; }
+  .rkort .rart img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .rkort .rnaam{ margin:0 0 0 18px; font-size:21px; font-weight:600; display:block;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rkort .rstatus{ position:static; margin-left:auto; flex:none; }
+  .hoesrij{ display:flex; gap:20px; margin-top:14px; overflow:hidden; }
+  .hoes{ width:190px; flex:none; cursor:pointer; user-select:none; }
+  .hoes .hart{ width:190px; height:190px; border-radius:14px; background:#232323; display:flex;
+    align-items:center; justify-content:center; overflow:hidden; position:relative; }
+  .hoes .hart img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .hoes .hart .mono{ font-size:46px; font-weight:800; color:#ffffff; }
+  .hoes .hnaam{ margin-top:12px; font-size:20px; font-weight:600; color:#ffffff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hoes .hsub{ font-size:16px; color:#b3b3b3; margin-top:3px; }
   /* Grote speler (overlay, opent via de hoes in de speelbalk) */
   .sbart{ cursor:pointer; }
-  .groot{ position:absolute; inset:0; background:#121212; z-index:6; display:none; }
+  .groot{ position:absolute; inset:0; background:linear-gradient(180deg,#1e1e1e 0%,#0a0a0a 72%); z-index:6; display:none; }
   .groot.open{ display:flex; }
   .gssluit{ position:absolute; top:36px; left:44px; width:66px; height:66px; border-radius:50%;
     background:#282828; display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -337,10 +317,13 @@
         </div>
         <div class="laadstrook" id="laadstrook"></div>
         <div id="viewhome">
+          <div class="chips" id="chips"></div>
           <div class="sectiekop"><span class="sk-titel">Snelkeuze</span><span class="sk-context" id="skcontext">Vaste zenders</span></div>
-          <div class="radiorij" id="radiorij"></div>
-          <div class="sectiekop"><span class="sk-titel">Bladeren</span><span class="sk-context">Music Assistant</span></div>
-          <div class="tegels" id="tegels"></div>
+          <div class="raster" id="radiorij"></div>
+          <div id="voorjou" style="display:none">
+            <div class="sectiekop"><span class="sk-titel">Iets voor jou</span><span class="sk-context">Uit je bibliotheek</span></div>
+            <div class="hoesrij" id="voorrij"></div>
+          </div>
           <div class="bronfout" id="bronfout" style="display:none"></div>
         </div>
         <div id="viewlijst">
@@ -356,7 +339,7 @@
         <div class="spelerpaneel">
           <div class="spkop">Afspelen op</div>
           <div class="sprijen" id="sprijen"></div>
-          <div class="spuitleg">De keuze geldt voor radio, zoeken en bladeren. De speelbalk onderin stuurt altijd de gekozen speler.</div>
+          <div class="spuitleg">De speelbalk onderin stuurt altijd de gekozen speler.</div>
         </div>
       </div>
     </div>
@@ -375,7 +358,6 @@
           <div class="hoofdknop" id="hoofdknop"><span class="drie"></span></div>
           <div class="skip" id="skipnext"><span class="vorm"><span class="drie-r"></span><span class="balk"></span></span></div>
         </div>
-        <div class="voortgang" id="voortgang"></div>
       </div>
       <div class="sb-rechts">
         <div class="sb-r-rij">
@@ -389,6 +371,7 @@
           <div class="volpct" id="volpct">--</div>
         </div>
       </div>
+      <div class="voortgang" id="voortgang"></div>
     </div>
     <div class="groot" id="grootspeler">
       <div class="gssluit" id="gssluit"><span class="chev"></span></div>
@@ -439,9 +422,10 @@
     { naam: "NPO Radio 2", kort: "R2", url: "https://icecast.omroep.nl/radio2-bb-mp3" },
     { naam: "NPO 3FM", kort: "3FM", url: "https://icecast.omroep.nl/3fm-bb-mp3" },
     { naam: "Radio 538", kort: "538", url: "https://21223.live.streamtheworld.com/RADIO538.mp3" },
-    { naam: "NPO Radio 1", kort: "R1", url: "https://icecast.omroep.nl/radio1-bb-mp3" }
+    { naam: "NPO Radio 1", kort: "R1", url: "https://icecast.omroep.nl/radio1-bb-mp3" },
+    { naam: "NPO Radio 5", kort: "R5", url: "https://icecast.omroep.nl/radio5-bb-mp3" }
   ];
-  // Root-nodes uit MA die als tegels worden getoond (op titel gematcht) + Radio Browser als uitzondering.
+  // Root-nodes uit MA (op titel gematcht); voedt de chips via _verwerkRoot.
   var CATS = [
     { sleutel: "artists", nl: "Artiesten", mono: "AR" },
     { sleutel: "albums", nl: "Albums", mono: "AL" },
@@ -451,6 +435,19 @@
     { sleutel: "podcasts", nl: "Podcasts", mono: "PO" },
     { sleutel: "audiobooks", nl: "Audioboeken", mono: "AB" },
     { sleutel: "radio browser", nl: "Radio Browser", mono: "RB" }
+  ];
+  // Chips zijn de enige categorienavigatie. "radio browser" is de werkende
+  // radiobibliotheek; de MA-radiobibliotheek (radio stations) is leeg zolang
+  // er geen radioproviders zijn en krijgt daarom geen chip.
+  var CHIPS = [
+    { label: "Alles", sleutel: null },
+    { label: "Artiesten", sleutel: "artists" },
+    { label: "Albums", sleutel: "albums" },
+    { label: "Nummers", sleutel: "tracks" },
+    { label: "Afspeellijsten", sleutel: "playlists" },
+    { label: "Radio", sleutel: "radio browser" },
+    { label: "Podcasts", sleutel: "podcasts" },
+    { label: "Audioboeken", sleutel: "audiobooks" }
   ];
   var KLASSE_NL = { track: "Nummer", album: "Album", artist: "Artiest", playlist: "Afspeellijst",
     podcast: "Podcast", audiobook: "Audioboek", radio: "Radiozender", directory: "Categorie",
@@ -508,7 +505,7 @@
       });
       this._el = {};
       ["stage","ktijd","kdatum","ondertitel","zoekbalk","zoekinput","zoekwis","zoekknop","laadstrook",
-       "viewhome","radiorij","skcontext","tegels","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
+       "viewhome","chips","radiorij","skcontext","voorjou","voorrij","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
        "sprijen","sbart","sbbron","sbtitel","sbartiest",
        "skipprev","hoofdknop","skipnext","voortgang","sbspeler","demp","volmin","volspoor","volplus","volpct",
        "grootspeler","gssluit","gsart","gsbron","gstitel","gsartiest","gsvoortgang",
@@ -536,11 +533,38 @@
       // zonder favorieten de vijf vaste zenders (zie _laadFavorieten).
       this._favModus = false;
       this._favVoor = 0;
+      this._vjVoor = 0;
+      this._voorjou = [];
       this._favBezig = false;
       this._snel = ZENDERS.map(function (z) {
         return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null };
       });
       this._tekenSnelkeuze();
+      // Chips: de enige categorienavigatie. Actief wordt een chip pas als
+      // de categorie echt bestaat; ontbrekende categorieen worden grijs.
+      this._catNodes = {};
+      this._el.chips.innerHTML = CHIPS.map(function (d, i) {
+        return '<div class="chip' + (i === 0 ? " actief" : "") + '" data-chip="' + i + '">' + esc(d.label) + "</div>";
+      }).join("");
+      Array.prototype.forEach.call(this._el.chips.querySelectorAll("[data-chip]"), function (chipEl) {
+        chipEl.addEventListener("click", function () {
+          var d = CHIPS[parseInt(chipEl.getAttribute("data-chip"), 10)];
+          if (!d.sleutel) {
+            Array.prototype.forEach.call(self._el.chips.querySelectorAll(".chip"), function (c2) {
+              c2.classList.toggle("actief", c2 === chipEl);
+            });
+            self._naarHome();
+            return;
+          }
+          var node = self._catNodes[d.sleutel];
+          if (!node) return;
+          Array.prototype.forEach.call(self._el.chips.querySelectorAll(".chip"), function (c2) {
+            c2.classList.toggle("actief", c2 === chipEl);
+          });
+          self._stack = [];
+          self._openNode(node);
+        });
+      });
       // Spelerkeuze (statisch)
       this._el.sprijen.innerHTML = SPELERS.map(function (p, i) {
         return '<div class="sprij" data-speler="' + i + '">' +
@@ -689,6 +713,9 @@
         this._laadRoot();
       }
       // Snelkeuze-favorieten laden/verversen (bij start, daarna elke 5 min)
+      if (hass.callService && !this._vjBezig && Date.now() - (this._vjVoor || 0) > 300000) {
+        this._laadVoorJou();
+      }
       if (hass.callService && !this._favBezig && Date.now() - (this._favVoor || 0) > 300000) {
         this._laadFavorieten();
       }
@@ -738,13 +765,12 @@
     _tekenSnelkeuze() {
       var self = this;
       this._el.radiorij.innerHTML = this._snel.map(function (z, i) {
-        var art = z.img
-          ? '<img src="' + esc(z.img) + '" alt="" onerror="this.remove()">'
-          : esc(z.mono);
-        return '<div class="rkaart" data-snel="' + i + '">' +
-          '<div class="rmono">' + art + '</div>' +
-          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '"></span></div>' +
-          '<div class="rnaam">' + esc(z.naam) + '</div><span class="rspeel"></span></div>';
+        var art = "<span>" + esc(z.mono) + "</span>" +
+          (z.img ? '<img src="' + esc(z.img) + '" alt="" onerror="this.remove()">' : "");
+        return '<div class="rkort" data-snel="' + i + '">' +
+          '<div class="rart">' + art + '</div>' +
+          '<div class="rnaam">' + esc(z.naam) + '</div>' +
+          '<div class="rstatus" data-rstatus="' + i + '"><span class="eq" data-req="' + i + '"><i></i><i></i><i></i></span><span data-rtekst="' + i + '"></span></div></div>';
       }).join("");
       Array.prototype.forEach.call(this._el.radiorij.querySelectorAll("[data-snel]"), function (tile) {
         tile.addEventListener("click", function () {
@@ -768,7 +794,7 @@
       var p;
       try {
         p = this._hass.callService("music_assistant", "get_library",
-          { config_entry_id: MA_ENTRY, media_type: "radio", favorite: true, limit: 5 },
+          { config_entry_id: MA_ENTRY, media_type: "radio", favorite: true, limit: 6 },
           undefined, false, true);
       } catch (e) { p = null; }
       if (!p || !p.then) { this._favBezig = false; this._favVoor = Date.now(); return; }
@@ -786,9 +812,17 @@
           favs.push({ naam: String(it.name), mono: monoVan(it.name), url: null, uri: String(it.uri), img: img });
         });
         self._favModus = favs.length > 0;
-        self._snel = self._favModus ? favs.slice(0, 5) : ZENDERS.map(function (z) {
-          return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null };
-        });
+        var snel = favs.slice(0, 6);
+        if (snel.length < 6) {
+          ZENDERS.forEach(function (z) {
+            if (snel.length >= 6) return;
+            var dubbel = snel.some(function (b) {
+              return b.naam === z.naam || (b.url && b.url === z.url);
+            });
+            if (!dubbel) snel.push({ naam: z.naam, mono: z.kort, url: z.url, uri: null, img: null });
+          });
+        }
+        self._snel = snel;
         self._tekenSnelkeuze();
       }).catch(function () {
         self._favBezig = false;
@@ -1075,23 +1109,23 @@
           self._rootVoor = speler;
           self._rootNode = res;
           self._cacheZet(self._cacheSleutel({ media_content_type: "", media_content_id: "" }), res);
-          self._tekenTegels(res);
+          self._verwerkRoot(res);
         })
         .catch(function () {
           self._rootBezig = false;
           if (!self.isConnected || self._speler !== speler) return;
           self._el.bronfout.style.display = "";
-          self._el.bronfout.innerHTML = "<b>Bronnen laden is niet gelukt.</b> Music Assistant antwoordt niet. Tik op een tegel of zoek iets om het opnieuw te proberen.";
-          self._el.tegels.innerHTML = "";
+          self._el.bronfout.innerHTML = "<b>Bronnen laden is niet gelukt.</b> Music Assistant antwoordt niet. Zoek iets of tik op een chip om het opnieuw te proberen.";
+          self._catNodes = {};
+          self._tekenChips();
         });
     }
-    _tekenTegels(rootRes) {
+    _verwerkRoot(rootRes) {
       var kinderen = (rootRes && rootRes.children) || [];
       var perTitel = {};
       kinderen.forEach(function (c) { perTitel[String(c.title || "").toLowerCase()] = c; });
-      var html = "";
       var self = this;
-      this._tegelNodes = [];
+      this._catNodes = {};
       CATS.forEach(function (cat) {
         var node = perTitel[cat.sleutel];
         if (!node) return;
@@ -1099,19 +1133,92 @@
         // App-bronnen verbergen, behalve Radio Browser (enige werkende radiobibliotheek in de boom)
         if (id.indexOf("media-source://") === 0 && id.indexOf("media-source://radio_browser") !== 0) return;
         if (!node.can_expand && !node.can_play) return;
-        var idx = self._tegelNodes.length;
-        self._tegelNodes.push(node);
-        html += '<div class="tegel" data-tegel="' + idx + '"><div class="rmono">' + cat.mono + '</div>' +
-          '<div class="ttegelnaam">' + esc(cat.nl) + '</div><div class="tchev"></div></div>';
+        self._catNodes[cat.sleutel] = node;
       });
-      this._el.tegels.innerHTML = html;
       this._el.bronfout.style.display = "none";
-      Array.prototype.forEach.call(this._el.tegels.querySelectorAll("[data-tegel]"), function (t) {
-        t.addEventListener("click", function () {
-          var node = self._tegelNodes[parseInt(t.getAttribute("data-tegel"), 10)];
-          if (node) { self._stack = []; self._openNode(node); }
+      this._tekenChips();
+    }
+    _tekenChips() {
+      if (!this._el.chips || !this._catNodes) return;
+      var nodes = this._catNodes;
+      Array.prototype.forEach.call(this._el.chips.querySelectorAll("[data-chip]"), function (el, i) {
+        var d = CHIPS[i];
+        if (d && d.sleutel) el.classList.toggle("uit", !nodes[d.sleutel]);
+      });
+    }
+    _spelerWeg() {
+      var s = this._sp();
+      return !!s && (s.state === "unavailable" || s.state === "unknown");
+    }
+    /* ---------- Voor jou (echte bibliotheekitems) ---------- */
+    _laadVoorJou() {
+      if (!this._hass || !this._hass.callService) return;
+      var self = this;
+      this._vjBezig = true;
+      var vraag = function (type) {
+        try {
+          return self._hass.callService("music_assistant", "get_library",
+            { config_entry_id: MA_ENTRY, media_type: type, limit: 6 }, undefined, false, true);
+        } catch (e) { return null; }
+      };
+      var p = vraag("album");
+      if (!p || !p.then) { this._vjBezig = false; this._vjVoor = Date.now(); return; }
+      this._metTimeout(p, 12000).then(function (res) {
+        var items = (res && res.response && res.response.items) || (res && res.items) || [];
+        if (items.length) {
+          self._vjBezig = false; self._vjVoor = Date.now();
+          if (self.isConnected) self._tekenVoorJou(items, "album");
+          return;
+        }
+        var p2 = vraag("playlist");
+        if (!p2 || !p2.then) {
+          self._vjBezig = false; self._vjVoor = Date.now();
+          if (self.isConnected) self._tekenVoorJou([], "playlist");
+          return;
+        }
+        return self._metTimeout(p2, 12000).then(function (res2) {
+          var items2 = (res2 && res2.response && res2.response.items) || (res2 && res2.items) || [];
+          self._vjBezig = false; self._vjVoor = Date.now();
+          if (self.isConnected) self._tekenVoorJou(items2, "playlist");
+        });
+      }).catch(function () {
+        self._vjBezig = false;
+        self._vjVoor = Date.now();
+      });
+    }
+    _tekenVoorJou(items, type) {
+      var self = this;
+      var bruikbaar = [];
+      items.forEach(function (it) {
+        if (!it || !it.uri || !it.name) return;
+        var img = null;
+        if (typeof it.image === "string") img = it.image;
+        else if (it.image && typeof it.image.path === "string") img = it.image.path;
+        var sub = type === "playlist" ? "Afspeellijst" : "Album";
+        if (type === "album" && it.artists && it.artists[0] && it.artists[0].name) sub = String(it.artists[0].name);
+        bruikbaar.push({ naam: String(it.name), uri: String(it.uri), img: img, sub: sub, type: type });
+      });
+      this._voorjou = bruikbaar;
+      if (!bruikbaar.length) { this._el.voorjou.style.display = "none"; return; }
+      this._el.voorjou.style.display = "";
+      this._el.voorrij.innerHTML = bruikbaar.map(function (v, i) {
+        var art = '<span class="mono">' + esc(monoVan(v.naam)) + "</span>" +
+          (v.img ? '<img src="' + esc(v.img) + '" alt="" onerror="this.remove()">' : "");
+        return '<div class="hoes" data-vj="' + i + '"><div class="hart">' + art + "</div>" +
+          '<div class="hnaam">' + esc(v.naam) + '</div><div class="hsub">' + esc(v.sub) + "</div></div>";
+      }).join("");
+      Array.prototype.forEach.call(this._el.voorrij.querySelectorAll("[data-vj]"), function (el) {
+        el.addEventListener("click", function () {
+          var v = self._voorjou[parseInt(el.getAttribute("data-vj"), 10)];
+          if (v) self._speelVoorJou(v);
         });
       });
+    }
+    _speelVoorJou(v) {
+      if (this._spelerWeg()) return;
+      this._call("music_assistant", "play_media",
+        { media_id: v.uri, media_type: v.type, enqueue: "replace" },
+        { entity_id: this._speler });
     }
     _toonLijst(titel) {
       this._view = "lijst";
@@ -1122,6 +1229,11 @@
     _naarHome() {
       this._view = "home";
       this._stack = [];
+      if (this._el.chips) {
+        Array.prototype.forEach.call(this._el.chips.querySelectorAll(".chip"), function (c2, i2) {
+          c2.classList.toggle("actief", i2 === 0);
+        });
+      }
       this._el.viewlijst.style.display = "none";
       this._el.viewhome.style.display = "";
       if (this._rootVoor !== this._speler && !this._rootBezig) this._laadRoot();
@@ -1351,6 +1463,7 @@
     }
     /* ---------- Afspelen ---------- */
     _speelItem(it) {
+      if (this._spelerWeg()) return;
       if (it._uri) {
         this._call("music_assistant", "play_media",
           { media_id: it._uri, media_type: it._type || undefined, enqueue: "replace" },
@@ -1362,11 +1475,13 @@
         { entity_id: this._speler });
     }
     _speelZender(z) {
+      if (this._spelerWeg()) return;
       this._call("media_player", "play_media",
         { media_content_id: z.url, media_content_type: "music", enqueue: "replace" },
         { entity_id: this._speler });
     }
     _speelFav(z) {
+      if (this._spelerWeg()) return;
       this._call("music_assistant", "play_media",
         { media_id: z.uri, media_type: "radio", enqueue: "replace" },
         { entity_id: this._speler });
