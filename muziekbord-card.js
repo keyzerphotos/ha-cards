@@ -1,4 +1,7 @@
 /*
+  Muziekbord v2.4.2 - Efteling Kids Radio wijst nu naar de echte stream
+  (media.hostin.live; de oude streamtheworld-mount speelt een Top 40-zender)
+  en heeft het echte Efteling-logo (radiotime-CDN).
   Muziekbord v2.4.1 - als v2.4, plus RADIONL Kids als tweede vaste zender
   (met TuneIn-logo; vaste zenders kunnen nu een eigen logoplaatje dragen).
   Muziekbord v2.4 - Spotify-appstijl, volwassen uitgewerkt (route A, 4 nov 2026).
@@ -420,7 +423,7 @@
     { id: "media_player.koken_met_sanne_2", naam: "Koken Met Sanne", type: "Groep", mono: "KS", vierkant: false }
   ];
   var ZENDERS = [
-    { naam: "Efteling Kids Radio", kort: "EK", url: "http://25243.live.streamtheworld.com:3690/TLPSTR07_SC" },
+    { naam: "Efteling Kids Radio", kort: "EK", url: "https://media.hostin.live/audio/efteling.mp3", img: "https://cdn-radiotime-logos.tunein.com/s95494q.png" },
     { naam: "RADIONL Kids", kort: "RK", url: "https://stream.radionlkids.nl/rnlkids", img: "https://cdn-profiles.tunein.com/s301909/images/logod.png" },
     { naam: "NPO Radio 2", kort: "R2", url: "https://icecast.omroep.nl/radio2-bb-mp3" },
     { naam: "NPO 3FM", kort: "3FM", url: "https://icecast.omroep.nl/3fm-bb-mp3" },
