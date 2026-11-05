@@ -1,4 +1,4 @@
-/* Familiebord home card v1.16 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.16.1 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -56,7 +56,16 @@
           bovenlangs waar 10 en 30 elkaar raken). Tijdens het slepen toont
           de boog de sleepwaarde; pas bij loslaten gaat er één
           set_temperature naar de lokale entiteit, want de Tado-bridge
-          breekt op gestapelde writes. Min/plus blijven werken als voorheen. */
+          breekt op gestapelde writes. Min/plus blijven werken als voorheen.
+   v1.16.1: teruggefloten door de praktijk op de Lenovo: het verspringen
+          van de waarde bij het pakken voelde slecht. De sleep is nu relatief:
+          de waarde start op de huidige instelling en volgt alleen de
+          draaibeweging, met een dode zone van 6 graden draaiing zodat een
+          tik op de ring niets verstelt. Tikken-op-de-boog-om-te-zetten is
+          daarmee weg. Ook zet de kaart overscroll-behavior uit op de
+          paginaroot, tegen omlaag-veeg-verversen vanuit de webpagina zelf;
+          de pull-to-refresh van Kiosk Satellite zelf zit daarboven en kan
+          een kaart niet tegenhouden (die moet in KS uit). */
 (function () {
   "use strict";
 
@@ -304,6 +313,7 @@
     }
     _build() {
       this._built = true;
+      try { document.documentElement.style.overscrollBehavior = "none"; } catch (e) {}
       var root = this.attachShadow({ mode: "open" });
       var style = document.createElement("style");
       style.textContent = CSS;
@@ -513,12 +523,13 @@
       if (!s) return;
       var min = s.attributes.min_temp !== undefined ? s.attributes.min_temp : 5;
       var max = s.attributes.max_temp !== undefined ? s.attributes.max_temp : 30;
-      var hoek = this._hoek(ev);
-      var frac = (((hoek % 360) + 360) % 360) / 360;
-      var v = Math.max(min, Math.min(max, 10 + frac * 20));
+      var base = (this._ovSet && this._ovSet.room === this._room && Date.now() < this._ovSet.until)
+        ? this._ovSet.val : s.attributes.temperature;
+      if (base === undefined || base === null) base = s.attributes.current_temperature;
+      if (base === undefined || base === null) return;
       ev.preventDefault();
       try { this._el.ringwrap.setPointerCapture(ev.pointerId); } catch (e) {}
-      this._drag = { room: this._room, val: v, last: hoek, min: min, max: max };
+      this._drag = { room: this._room, val: Number(base), start: Number(base), cum: 0, last: this._hoek(ev), min: min, max: max };
       this._el.ringwrap.classList.add("drag");
       this._update();
     }
@@ -529,9 +540,13 @@
       if (d > 180) d -= 360;
       if (d < -180) d += 360;
       this._drag.last = hoek;
-      var v = this._drag.val + d / 360 * 20;
-      this._drag.val = Math.max(this._drag.min, Math.min(this._drag.max, v));
-      this._update();
+      this._drag.cum += d;
+      var eff = this._drag.cum;
+      if (Math.abs(eff) <= 6) eff = 0;
+      else eff = eff - Math.sign(eff) * 6;
+      var v = this._drag.start + eff / 360 * 20;
+      var nv = Math.max(this._drag.min, Math.min(this._drag.max, v));
+      if (nv !== this._drag.val) { this._drag.val = nv; this._update(); }
     }
     _dragEnd(ev) {
       if (!this._drag) return;
