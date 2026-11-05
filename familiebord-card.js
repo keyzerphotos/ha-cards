@@ -1,4 +1,4 @@
-/* Familiebord home card v1.14 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.15 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -42,7 +42,13 @@
    v1.14: dat muziekblok weer verwijderd (Alex, 3 nov 2026: "de kleine
           speler op de overzichtspagina mag weg"). Het muziekbord is nu de
           enige muziekplek; verder is deze versie gelijk aan v1.12 + de
-          nav-aanvulling. */
+          nav-aanvulling.
+   v1.15: Schema hervatten en de modusweergave lezen nu de Tado CE-entiteit
+          (de _3) in plaats van de officiële cloudentiteit (de _2). De
+          _2-serie is dood sinds de Tado-login van de kernintegratie is
+          verlopen (token-refresh geweigerd, herauthenticatie hangt), dus de
+          Schema-knop gaf steevast "cloud offline". CE kan de override ook
+          wissen (hvac auto) en is live op alle zones behalve Kantoor. */
 (function () {
   "use strict";
 
@@ -424,7 +430,7 @@
           : (heating ? '<span class="dot"></span>Verwarming aan' : "Op temperatuur");
       }
       // modusknoppen: echte stand komt van de cloudentiteit als die er is
-      var cs = this._st(zones[this._room][1] + "_2");
+      var cs = this._st(zones[this._room][1] + "_3");
       var mode = null;
       if (cs && cs.state !== "unavailable" && cs.state !== "unknown") mode = cs.state;
       else if (cl) mode = cl.state === "off" ? "off" : "heat";
@@ -497,12 +503,12 @@
     _mode(m) {
       var z = ZONES[this._room];
       if (m === "auto") {
-        var cs = this._st(z[1] + "_2");
+        var cs = this._st(z[1] + "_3");
         if (!cs || cs.state === "unavailable" || cs.state === "unknown") {
-          this._flash("Tado-cloud offline, log opnieuw in bij Tado");
+          this._flash("Tado-cloud offline (CE geeft geen antwoord)");
           return;
         }
-        this._call("climate", "set_hvac_mode", { hvac_mode: "auto" }, { entity_id: z[1] + "_2" });
+        this._call("climate", "set_hvac_mode", { hvac_mode: "auto" }, { entity_id: z[1] + "_3" });
       } else {
         this._call("climate", "set_hvac_mode", { hvac_mode: m }, { entity_id: z[1] });
       }
