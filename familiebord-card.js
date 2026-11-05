@@ -1,4 +1,4 @@
-/* Familiebord home card v1.15 — webapp-stijl familiepagina voor Home Assistant.
+/* Familiebord home card v1.16 — webapp-stijl familiepagina voor Home Assistant.
    Eén custom element, vanilla JS, data rechtstreeks uit hass.
    Ontwerp: donker homio-thema, klok + weer links, klimaatring als hero,
    status + todo rechts, kamerchips onderin, deurbel-overlay bij ding.
@@ -48,7 +48,15 @@
           _2-serie is dood sinds de Tado-login van de kernintegratie is
           verlopen (token-refresh geweigerd, herauthenticatie hangt), dus de
           Schema-knop gaf steevast "cloud offline". CE kan de override ook
-          wissen (hvac auto) en is live op alle zones behalve Kantoor. */
+          wissen (hvac auto) en is live op alle zones behalve Kantoor.
+   v1.16: de boog is nu een echte slider (Alex' verzoek). Slepen op de ring
+          stelt de doeltemperatuur in: bij het pakken springt de waarde naar
+          de aangeraakte plek op de schaal (10-30 graden rondom), daarna
+          volgt de waarde de draaibeweging (delta-tracking, dus geen sprong
+          bovenlangs waar 10 en 30 elkaar raken). Tijdens het slepen toont
+          de boog de sleepwaarde; pas bij loslaten gaat er één
+          set_temperature naar de lokale entiteit, want de Tado-bridge
+          breekt op gestapelde writes. Min/plus blijven werken als voorheen. */
 (function () {
   "use strict";
 
@@ -106,7 +114,8 @@
   .hour .c{ font-size:19px; color:#9ba1a8; margin-top:4px; }
   .hero{ position:absolute; left:50%; top:545px; transform:translate(-50%,-50%); text-align:center; }
   .hero .above{ margin-bottom:34px; }
-  .ringwrap{ position:relative; width:452px; height:452px; margin:0 auto; }
+  .ringwrap{ position:relative; width:452px; height:452px; margin:0 auto; touch-action:none; cursor:pointer; }
+  .ringwrap.drag .ring{ box-shadow:0 0 120px rgba(217,164,65,.25); }
   .ring{ position:absolute; inset:0; border-radius:50%; box-shadow:0 0 90px rgba(217,164,65,.10); }
   .ringdisc{ position:absolute; inset:24px; border-radius:50%; background:#0b0c0e;
     display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -212,7 +221,7 @@
       <div class="above caps" id="herolabel">Woonkamer</div>
       <div class="ringrow">
         <div class="stepbtn" id="stepmin">−</div>
-        <div class="ringwrap">
+        <div class="ringwrap" id="ringwrap">
           <div class="ring" id="ring"></div>
           <div class="ringdisc">
             <div class="now"><span id="rnow">--,-</span><sup>°</sup></div>
@@ -321,7 +330,7 @@
       });
       this._el = {};
       var self = this;
-      ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","rnow","rset","rbelow","herolabel",
+      ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","ringwrap","rnow","rset","rbelow","herolabel",
        "stepmin","stepplus","modeheat","modeschema","modeoff",
        "todo","todoadd","statusrows","chips","overlay","beltime","belview","bellive","belweg","belgroot",
        "camvoordeur","camnaud","camcas","beltitle","camname","camwhere"]
@@ -329,6 +338,10 @@
       this._room = 0;
       this._el.stepmin.addEventListener("click", function () { self._step(-0.5); });
       this._el.stepplus.addEventListener("click", function () { self._step(0.5); });
+      this._el.ringwrap.addEventListener("pointerdown", function (ev) { self._dragStart(ev); });
+      this._el.ringwrap.addEventListener("pointermove", function (ev) { self._dragMove(ev); });
+      this._el.ringwrap.addEventListener("pointerup", function (ev) { self._dragEnd(ev); });
+      this._el.ringwrap.addEventListener("pointercancel", function (ev) { self._dragEnd(ev); });
       this._el.modeheat.addEventListener("click", function () { self._mode("heat"); });
       this._el.modeschema.addEventListener("click", function () { self._mode("auto"); });
       this._el.modeoff.addEventListener("click", function () { self._mode("off"); });
@@ -420,9 +433,11 @@
         var cur = cl.attributes.current_temperature;
         var set = cl.attributes.temperature;
         if (this._ovSet && this._ovSet.room === this._room && Date.now() < this._ovSet.until) set = this._ovSet.val;
+        if (this._drag) set = Math.round(this._drag.val * 2) / 2;
         el.rnow.textContent = cur === undefined ? "--,-" : fmt(cur);
         el.rset.innerHTML = set === undefined || set === null ? "Verwarming uit" : "Ingesteld op <b>" + fmt(set) + "°</b>";
-        var pct = cur === undefined ? 0 : Math.max(0, Math.min(100, (cur - 10) / 20 * 100));
+        var vis = this._drag ? this._drag.val : cur;
+        var pct = vis === undefined || vis === null ? 0 : Math.max(0, Math.min(100, (vis - 10) / 20 * 100));
         el.ring.style.background = "conic-gradient(from -90deg, #d9a441 0 " + pct + "%, rgba(255,255,255,.08) " + pct + "% 100%)";
         var heating = cl.attributes.hvac_action === "heating" || cl.state === "heat";
         el.rbelow.innerHTML = cl.state === "off"
@@ -483,6 +498,58 @@
       if (!this._hass) return;
       var p = this._hass.callService(domain, service, data, target);
       if (p && p.catch) p.catch(function () {});
+    }
+    _hoek(ev) {
+      var r = this._el.ringwrap.getBoundingClientRect();
+      var dx = ev.clientX - (r.left + r.width / 2);
+      var dy = ev.clientY - (r.top + r.height / 2);
+      return Math.atan2(dx, -dy) * 180 / Math.PI;
+    }
+    _dragStart(ev) {
+      if (ev.isPrimary === false) return;
+      if (ev.button !== undefined && ev.button > 0) return;
+      var z = ZONES[this._room];
+      var s = this._st(z[1]);
+      if (!s) return;
+      var min = s.attributes.min_temp !== undefined ? s.attributes.min_temp : 5;
+      var max = s.attributes.max_temp !== undefined ? s.attributes.max_temp : 30;
+      var hoek = this._hoek(ev);
+      var frac = (((hoek % 360) + 360) % 360) / 360;
+      var v = Math.max(min, Math.min(max, 10 + frac * 20));
+      ev.preventDefault();
+      try { this._el.ringwrap.setPointerCapture(ev.pointerId); } catch (e) {}
+      this._drag = { room: this._room, val: v, last: hoek, min: min, max: max };
+      this._el.ringwrap.classList.add("drag");
+      this._update();
+    }
+    _dragMove(ev) {
+      if (!this._drag) return;
+      var hoek = this._hoek(ev);
+      var d = hoek - this._drag.last;
+      if (d > 180) d -= 360;
+      if (d < -180) d += 360;
+      this._drag.last = hoek;
+      var v = this._drag.val + d / 360 * 20;
+      this._drag.val = Math.max(this._drag.min, Math.min(this._drag.max, v));
+      this._update();
+    }
+    _dragEnd(ev) {
+      if (!this._drag) return;
+      var drag = this._drag;
+      this._drag = null;
+      this._el.ringwrap.classList.remove("drag");
+      if (drag.room !== this._room) { this._update(); return; }
+      var z = ZONES[drag.room];
+      var s = this._st(z[1]);
+      var nv = Math.round(drag.val * 2) / 2;
+      nv = Math.max(drag.min, Math.min(drag.max, nv));
+      var huidig = (this._ovSet && this._ovSet.room === drag.room && Date.now() < this._ovSet.until)
+        ? this._ovSet.val : (s ? s.attributes.temperature : null);
+      if (s && nv !== huidig) {
+        this._ovSet = { room: drag.room, val: nv, until: Date.now() + 12000 };
+        this._call("climate", "set_temperature", { temperature: nv }, { entity_id: z[1] });
+      }
+      this._update();
     }
     _step(d) {
       var z = ZONES[this._room];
