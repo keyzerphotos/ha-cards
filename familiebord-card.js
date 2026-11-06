@@ -271,6 +271,7 @@
       <a href="/auto-bord">Auto</a>
       <a href="/stofzuiger-bord">Stofzuiger</a>
       <a href="/babyfoon-bord">Babyfoon</a>
+      <a href="/eten-bord">Eten</a>
     </div>
     <div class="overlay" id="overlay">
       <div class="belcard">

@@ -64,7 +64,7 @@
     return v.toLocaleString("nl-NL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"]];
+  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"], ["Eten", "/eten-bord"]];
   var NAV_ACTIVE = "Energie";
 
   var CSS = `

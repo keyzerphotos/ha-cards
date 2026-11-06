@@ -451,6 +451,7 @@
       <a href="/auto-bord">Auto</a>
       <a href="/stofzuiger-bord">Stofzuiger</a>
       <a href="/babyfoon-bord">Babyfoon</a>
+      <a href="/eten-bord">Eten</a>
     </nav>
   </div>`;
 
