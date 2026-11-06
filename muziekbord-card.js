@@ -1,4 +1,6 @@
 /*
+  Muziekbord v2.5.1 - Kinderdisco-tegel wijst naar de Nederlandse
+  minidisco (MINIDISCO | NEDERLANDS) in plaats van de Engelstalige lijst.
   Muziekbord v2.5.0 - sectie "Playlists" met 14 categorietegels in
   Spotify-zoekschermstijl (o.a. Hitlijsten, Kids & familie, Kinderdisco,
   Foute Party, 90s en 00s). Elke tegel speelt de bibliotheekversie uit
@@ -462,7 +464,7 @@
     { label: "Speciaal voor jou", match: "Infinite Mix (favorites)", uri: "library://playlist/8", kleur: "#8d67ab" },
     { label: "Hitlijsten", match: "Radio 538 TOP 50 - 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLWP_Fr__lD1e-JxsiS6ObD8kA4I--QG_t", kleur: "#e8115b" },
     { label: "Kids & familie", match: "Kinderen voor kinderen", uri: "ytmusic_free--sdHEueeX://playlist/VLPL7D004280D118EF61", kleur: "#2d46b9" },
-    { label: "Kinderdisco", match: "Mini Disco Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxzVmvJWY80pDHGAePBZ7dowURyu-sLCp", kleur: "#e61e32" },
+    { label: "Kinderdisco", match: "MINIDISCO | NEDERLANDS", uri: "ytmusic_free--sdHEueeX://playlist/VLPLzDZvvekbRQ2HnvZ_DjE-h8Rzz-0kqU8q", kleur: "#e61e32" },
     { label: "Nieuwe releases", match: "VEVO 2026 New Songs - Music Playlist 2026 - New Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLRXkxxi5lXuVpVQlSsVxXTQitKXrM0B2E", kleur: "#608108" },
     { label: "Happy beats", match: "Happy songs / Upbeat songs / Feel-good songs / Songs that make you smile, dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLx2Jv96o522ORh69HaDKClrz2Midqj8AE", kleur: "#f59b23" },
     { label: "Foute Party", match: "Foute Party Q-Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLNOPG6OiFPrfy-nrTga_q2ozRwGlhYSGT", kleur: "#ba5d07" },
