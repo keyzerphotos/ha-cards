@@ -1,4 +1,9 @@
 /*
+  Etenbord v1.0.1 - covers komen nu uit HA zelf (/local/mealie-covers/<id>.webp,
+  door Henk gesynct uit Mealie), met de directe Mealie-URL als terugval.
+  Reden: rechtstreeks naar Mealie linken brak op apparaten die het bord over
+  https openen (gemengde inhoud) en is op elk apparaat een extra faalpad.
+  Nieuwe recepten hebben pas een cover als de sync opnieuw draait.
   Etenbord v1.0 - receptenboek op basis van Mealie (officiele HA-integratie).
   Bovenin "Vanavond" uit de Mealie-weekplanner (met "Verras me" als er niets
   gepland staat), daaronder de weekstrip zodra er iets gepland is, en het
@@ -54,7 +59,7 @@
   .tegel{ background:#141519; border:1px solid #23252b; border-radius:20px; overflow:hidden; cursor:pointer; }
   .tegel:active{ transform:scale(0.985); }
   .tegel .cov{ height:150px; background:#1d1e24; position:relative; }
-  .tegel .cov img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .tegel .cov img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .tegel .cov .letter{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-size:64px; font-weight:800; color:#3a3b42; }
   .tegel .tnaam{ font-size:20px; font-weight:650; line-height:1.25; padding:13px 15px 4px 15px; }
@@ -223,9 +228,21 @@
         if (m) m.textContent = "Mealie is even niet bereikbaar. Tik op Eten in de balk om het opnieuw te proberen.";
       });
     }
-    _img(recept, variant) {
+    _img(recept) {
       if (!recept || !recept.recipe_id || !recept.image) return "";
-      return this._config.mealie_url + "/api/media/recipes/" + recept.recipe_id + "/images/" + (variant || "min-original.webp");
+      return "/local/mealie-covers/" + recept.recipe_id + ".webp";
+    }
+    _directImg(recept) {
+      if (!recept || !recept.recipe_id || !recept.image) return "";
+      return this._config.mealie_url + "/api/media/recipes/" + recept.recipe_id + "/images/min-original.webp";
+    }
+    _koppelFallback(imgEl, recept) {
+      if (!imgEl) return;
+      var direct = this._directImg(recept);
+      imgEl.addEventListener("error", function () {
+        if (direct && imgEl.src.indexOf("/api/media/") < 0) { imgEl.src = direct; return; }
+        imgEl.style.display = "none";
+      });
     }
     _planVoor(iso) {
       var eerste = null;
@@ -271,6 +288,7 @@
           '<div><div class="hnaam">' + esc(plan.name) + '</div>' +
           '<div class="hmeta">' + esc(dagNaam(vandaag)) + '</div>' +
           '<button class="knop" id="heroopen">Bekijk recept</button></div></div>';
+        this._koppelFallback(vlak.querySelector(".hero img"), plan);
         vlak.querySelector("#heroopen").addEventListener("click", function () { self._openRecept(plan); });
       } else {
         vlak.innerHTML =
@@ -326,10 +344,17 @@
         if (r.total_time) meta.push(r.total_time);
         if (r.recipe_servings) meta.push(r.recipe_servings + " pers.");
         return '<div class="tegel" data-id="' + esc(r.recipe_id) + '"><div class="cov">' +
-          (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<div class="letter">' + esc((r.name || "?").charAt(0)) + '</div>') +
+          '<div class="letter">' + esc((r.name || "?").charAt(0)) + '</div>' +
+          (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '') +
           '</div><div class="tnaam">' + esc(r.name) + '</div>' +
           '<div class="tmeta">' + esc(meta.join(" · ") || " ") + '</div></div>';
       }).join("");
+      Array.prototype.forEach.call(boek.querySelectorAll(".tegel"), function (t) {
+        var tid = t.getAttribute("data-id");
+        var trec = null;
+        self._recepten.forEach(function (x) { if (x.recipe_id === tid) trec = x; });
+        if (trec) self._koppelFallback(t.querySelector("img"), trec);
+      });
       melding.textContent = this._recepten.length
         ? (lijst.length ? "" : "Geen recept gevonden voor je zoekopdracht.")
         : "Nog geen recepten gevonden.";
@@ -378,6 +403,7 @@
         '<div class="chips">' + chips + '</div></div></div>' +
         '<div class="dkolommen"><div><h3>Ingrediënten</h3>' + (ings || '<div class="melding">Geen ingrediënten.</div>') + '</div>' +
         '<div><h3>Bereiding</h3>' + (stappen || '<div class="melding">Geen stappen.</div>') + '</div></div>';
+      this._koppelFallback(detail.querySelector("img.dcov"), r);
       detail.querySelector("#dsluit").addEventListener("click", function () { detail.classList.remove("open"); });
       detail.scrollTop = 0;
     }
