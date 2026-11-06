@@ -1,16 +1,13 @@
 /*
-  Etenbord v1.0.1 - covers komen nu uit HA zelf (/local/mealie-covers/<id>.webp,
-  door Henk gesynct uit Mealie), met de directe Mealie-URL als terugval.
-  Reden: rechtstreeks naar Mealie linken brak op apparaten die het bord over
-  https openen (gemengde inhoud) en is op elk apparaat een extra faalpad.
-  Nieuwe recepten hebben pas een cover als de sync opnieuw draait.
-  Etenbord v1.0 - receptenboek op basis van Mealie (officiele HA-integratie).
-  Bovenin "Vanavond" uit de Mealie-weekplanner (met "Verras me" als er niets
-  gepland staat), daaronder de weekstrip zodra er iets gepland is, en het
-  boek zelf: alle recepten als covertegels met zoeken. Tik op een tegel
-  opent het recept met ingredienten en stappen (kookweergave).
-  Data via mealie.get_recipes / get_recipe / get_mealplan (return_response),
-  covers rechtstreeks van Mealie: /api/media/recipes/<id>/images/...
+  Etenbord v1.1 - ontworpen tegels voor alles (besluit Alex, 6 nov 2026):
+  geen foto's meer op het bord, maar rustige boekomslagen met de categorie
+  erboven en een kleur per categorie (uit Mealie, daar nu overal gevuld).
+  Detailweergave: leesbaarder tekst (groter, zwaarder, meer regelafstand),
+  lange beschrijving ingeklapt met "Lees meer", en een personen-scaler die
+  de ingredienthoeveelheden herberekent uit hoeveelheid + eenheid + product.
+  v1.0.1: covers via /local (vervallen in v1.1, geen foto's meer).
+  v1.0: receptenboek uit Mealie via de officiele HA-integratie
+  (mealie.get_recipes / get_recipe / get_mealplan met return_response).
 */
 (function () {
   "use strict";
@@ -29,6 +26,14 @@
   }
 
   var GOUD = "#dfa03c";
+  var CATKLEUR = {
+    "Ontbijt": "#232d26",
+    "Brood": "#2e2417",
+    "Zoet": "#2b2130",
+    "Hoofdgerecht": "#1f2a33",
+    "Bijgerechten": "#2a2d20"
+  };
+  var PALET = ["#263238", "#33261d", "#252b3a", "#2e2233", "#1f3038", "#332b1d"];
   var CSS = `
   :host{ display:block; position:fixed; inset:0; width:100%; height:100%; }
   *{ margin:0; padding:0; box-sizing:border-box; }
@@ -42,48 +47,56 @@
     border:1px solid #2b2d33; border-radius:999px; padding:13px 22px; outline:none; }
   .zoek input:focus{ border-color:${GOUD}; }
   .sectietitel{ font-size:24px; font-weight:700; margin:26px 0 14px 0; }
-  .hero{ display:flex; gap:28px; background:#141519; border:1px solid #23252b; border-radius:24px;
-    padding:22px; align-items:center; }
-  .hero img{ width:300px; height:210px; object-fit:cover; border-radius:16px; background:#1d1e24; flex:0 0 auto; }
-  .hero .hnaam{ font-size:34px; font-weight:750; line-height:1.15; }
-  .hero .hmeta{ font-size:19px; color:#a7a49c; margin-top:8px; }
-  .knop{ display:inline-block; margin-top:18px; font-size:20px; font-weight:650; color:#141414;
+  .cat{ font-size:13.5px; font-weight:700; letter-spacing:2.2px; text-transform:uppercase; color:#f2f0eb; opacity:.72; }
+  .lijn{ width:34px; height:3px; border-radius:2px; background:${GOUD}; margin:10px 0 12px 0; }
+  .hero{ border-radius:24px; padding:28px 30px; border:1px solid rgba(255,255,255,0.07); }
+  .hero .hnaam{ font-size:38px; font-weight:800; line-height:1.14; max-width:1150px; }
+  .hero .hmeta{ font-size:19px; color:#f2f0eb; opacity:.66; margin-top:9px; }
+  .knop{ display:inline-block; margin-top:20px; font-size:20px; font-weight:650; color:#141414;
     background:${GOUD}; border:none; border-radius:999px; padding:12px 28px; cursor:pointer; font-family:inherit; }
-  .knop.zacht{ background:#23252b; color:#f2f0eb; margin-left:10px; }
   .week{ display:flex; gap:12px; flex-wrap:wrap; }
-  .dag{ background:#141519; border:1px solid #23252b; border-radius:16px; padding:12px 16px; min-width:170px; flex:1; }
-  .dag .dnaam{ font-size:15px; color:#a7a49c; }
+  .dag{ border-radius:16px; padding:14px 18px; min-width:190px; flex:1; border:1px solid rgba(255,255,255,0.07); cursor:pointer; }
+  .dag .dnaam{ font-size:15px; color:#f2f0eb; opacity:.62; }
   .dag .dnaam::first-letter{ text-transform:uppercase; }
-  .dag .dgerecht{ font-size:19px; font-weight:600; margin-top:3px; }
-  .boek{ display:grid; grid-template-columns:repeat(auto-fill,minmax(225px,1fr)); gap:20px; }
-  .tegel{ background:#141519; border:1px solid #23252b; border-radius:20px; overflow:hidden; cursor:pointer; }
+  .dag .dgerecht{ font-size:20px; font-weight:650; margin-top:4px; line-height:1.25; }
+  .boek{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; }
+  .tegel{ border-radius:20px; padding:20px 22px; height:208px; display:flex; flex-direction:column;
+    border:1px solid rgba(255,255,255,0.07); cursor:pointer; }
   .tegel:active{ transform:scale(0.985); }
-  .tegel .cov{ height:150px; background:#1d1e24; position:relative; }
-  .tegel .cov img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .tegel .cov .letter{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:64px; font-weight:800; color:#3a3b42; }
-  .tegel .tnaam{ font-size:20px; font-weight:650; line-height:1.25; padding:13px 15px 4px 15px; }
-  .tegel .tmeta{ font-size:16px; color:#a7a49c; padding:0 15px 14px 15px; }
+  .tegel .tnaam{ font-size:24px; font-weight:750; line-height:1.24; display:-webkit-box; -webkit-line-clamp:3;
+    -webkit-box-orient:vertical; overflow:hidden; }
+  .tegel .tmeta{ margin-top:auto; font-size:16.5px; color:#f2f0eb; opacity:.62; }
   .melding{ font-size:21px; color:#a7a49c; padding:26px 4px; }
   .detail{ position:absolute; inset:0; background:#0a0b0d; z-index:6; overflow-y:auto; overscroll-behavior:none;
-    padding:30px 44px 60px 44px; display:none; color:#f2f0eb; font-family:'EBInter',system-ui,sans-serif; }
+    padding:30px 44px 60px 44px; display:none; color:#f5f2ea; font-family:'EBInter',system-ui,sans-serif; }
   .detail.open{ display:block; }
   .detail .dtop{ display:flex; gap:30px; align-items:flex-start; }
-  .detail img.dcov{ width:380px; height:270px; object-fit:cover; border-radius:20px; background:#1d1e24; flex:0 0 auto; }
+  .dblok{ width:300px; height:216px; border-radius:20px; flex:0 0 auto; padding:22px 24px;
+    border:1px solid rgba(255,255,255,0.07); }
   .detail h2{ font-size:40px; font-weight:800; line-height:1.12; }
-  .detail .ddesc{ font-size:20px; color:#c9c6bf; margin-top:12px; line-height:1.45; max-width:900px; }
-  .chips{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
-  .chip{ font-size:17px; color:#f2f0eb; background:#1d1e24; border:1px solid #2b2d33; border-radius:999px; padding:7px 16px; }
+  .detail .ddesc{ font-size:20.5px; color:#ddd9d0; margin-top:12px; line-height:1.55; max-width:980px; font-weight:450; }
+  .detail .ddesc.dicht{ max-height:4.65em; overflow:hidden; }
+  .meerknop{ margin-top:8px; font-size:18px; font-weight:600; color:${GOUD}; background:none; border:none;
+    cursor:pointer; font-family:inherit; padding:4px 0; }
+  .chips{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center; }
+  .chip{ font-size:17.5px; color:#f2f0eb; background:#1d1e24; border:1px solid #2b2d33; border-radius:999px; padding:8px 17px; }
   .chip b{ color:${GOUD}; font-weight:700; }
+  .scaler{ display:inline-flex; align-items:center; gap:14px; background:#1d1e24; border:1px solid #2b2d33;
+    border-radius:999px; padding:6px 8px; }
+  .scaler button{ width:46px; height:46px; border-radius:50%; border:none; background:${GOUD}; color:#141414;
+    font-size:27px; font-weight:800; cursor:pointer; line-height:1; font-family:inherit; }
+  .scaler .swaarde{ font-size:18.5px; color:#f2f0eb; min-width:168px; text-align:center; }
+  .scaler .swaarde b{ color:${GOUD}; font-weight:750; }
   .sluit{ position:absolute; top:22px; right:30px; width:58px; height:58px; border-radius:50%; border:1px solid #2b2d33;
-    background:#17181c; color:#f2f0eb; font-size:30px; cursor:pointer; line-height:1; }
-  .dkolommen{ display:grid; grid-template-columns:minmax(300px,420px) 1fr; gap:44px; margin-top:34px; }
-  .dkolommen h3{ font-size:24px; font-weight:700; margin-bottom:14px; }
-  .ing{ font-size:20px; line-height:1.5; padding:9px 0; border-bottom:1px solid #1b1c21; color:#e8e5df; }
-  .stap{ display:flex; gap:16px; padding:11px 0; border-bottom:1px solid #1b1c21; }
-  .stap .nr{ flex:0 0 38px; height:38px; border-radius:50%; background:${GOUD}; color:#141414;
-    font-size:19px; font-weight:750; display:flex; align-items:center; justify-content:center; }
-  .stap .txt{ font-size:20px; line-height:1.5; color:#e8e5df; padding-top:6px; }
+    background:#17181c; color:#f2f0eb; font-size:30px; cursor:pointer; line-height:1; z-index:2; }
+  .dkolommen{ display:grid; grid-template-columns:minmax(320px,450px) 1fr; gap:48px; margin-top:36px; }
+  .dkolommen h3{ font-size:26px; font-weight:750; margin-bottom:14px; }
+  .ing{ font-size:21.5px; font-weight:500; line-height:1.55; padding:10px 0; border-bottom:1px solid #1b1c21; color:#f5f2ea; }
+  .ingtitel{ font-size:19px; font-weight:750; color:${GOUD}; padding:16px 0 4px 0; }
+  .stap{ display:flex; gap:16px; padding:12px 0; border-bottom:1px solid #1b1c21; }
+  .stap .nr{ flex:0 0 40px; height:40px; border-radius:50%; background:${GOUD}; color:#141414;
+    font-size:20px; font-weight:750; display:flex; align-items:center; justify-content:center; }
+  .stap .txt{ font-size:21.5px; font-weight:500; line-height:1.6; color:#f5f2ea; padding-top:6px; }
   .pnav{ position:absolute; left:50%; transform:translateX(-50%); bottom:26px; display:flex; gap:8px; z-index:8;
     background:rgba(16,17,20,0.92); padding:7px; border-radius:999px; border:1px solid #26272e;
     box-shadow:0 14px 34px rgba(0,0,0,0.5); }
@@ -146,13 +159,19 @@
       return new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long" }).format(new Date(iso + "T12:00:00"));
     } catch (e) { return iso; }
   }
+  function woordVoor(woord, aantal) {
+    if (woord === "personen" && aantal === 1) return "persoon";
+    return woord;
+  }
+  function fmtAantal(v) {
+    var r = Math.round(v * 4) / 4;
+    if (r === Math.floor(r)) return String(r);
+    return String(r).replace(".", ",");
+  }
 
   class EtenbordCard extends HTMLElement {
     setConfig(config) {
-      this._config = Object.assign(
-        { entry: "", mealie_url: "http://192.168.1.39:9000" },
-        config || {}
-      );
+      this._config = Object.assign({ entry: "" }, config || {});
       if (!this._built) this._bouw();
     }
     _bouw() {
@@ -216,8 +235,7 @@
         this._service("get_recipes", { result_limit: 100 }),
         this._service("get_mealplan", { start_date: vandaag, end_date: plusDagen(vandaag, 7) })
       ]).then(function (res) {
-        var items = (res[0].recipes && res[0].recipes.items) || [];
-        self._recepten = items;
+        self._recepten = (res[0].recipes && res[0].recipes.items) || [];
         self._plan = res[1].mealplan || [];
         self._geladen = true;
         self._bezig = false;
@@ -228,21 +246,23 @@
         if (m) m.textContent = "Mealie is even niet bereikbaar. Tik op Eten in de balk om het opnieuw te proberen.";
       });
     }
-    _img(recept) {
-      if (!recept || !recept.recipe_id || !recept.image) return "";
-      return "/local/mealie-covers/" + recept.recipe_id + ".webp";
+    _cat(recept) {
+      var cats = (recept && recept.categories) || [];
+      if (cats.length && cats[0].name) return cats[0].name;
+      return "Recept";
     }
-    _directImg(recept) {
-      if (!recept || !recept.recipe_id || !recept.image) return "";
-      return this._config.mealie_url + "/api/media/recipes/" + recept.recipe_id + "/images/min-original.webp";
+    _kleur(catNaam) {
+      if (CATKLEUR[catNaam]) return CATKLEUR[catNaam];
+      var som = 0;
+      for (var i = 0; i < catNaam.length; i++) som += catNaam.charCodeAt(i);
+      return PALET[som % PALET.length];
     }
-    _koppelFallback(imgEl, recept) {
-      if (!imgEl) return;
-      var direct = this._directImg(recept);
-      imgEl.addEventListener("error", function () {
-        if (direct && imgEl.src.indexOf("/api/media/") < 0) { imgEl.src = direct; return; }
-        imgEl.style.display = "none";
-      });
+    _basis(recept) {
+      var s = parseFloat(recept.recipe_servings);
+      if (s && s > 0) return { aantal: s, woord: "personen" };
+      var yq = parseFloat(recept.recipe_yield_quantity);
+      if (yq && yq > 0) return { aantal: yq, woord: recept.recipe_yield || "porties" };
+      return { aantal: 1, woord: "personen" };
     }
     _planVoor(iso) {
       var eerste = null;
@@ -261,11 +281,9 @@
       var rid = (r && (r.recipe_id || r.id)) || planItem.recipe_id || null;
       var naam = (r && r.name) || planItem.title || planItem.note_title || "";
       var match = null;
-      if (rid) {
-        this._recepten.forEach(function (x) { if (x.recipe_id === rid) match = x; });
-      }
+      if (rid) this._recepten.forEach(function (x) { if (x.recipe_id === rid) match = x; });
       if (match) return match;
-      if (rid || naam) return { recipe_id: rid, name: naam, image: r ? r.image : null };
+      if (rid || naam) return { recipe_id: rid, name: naam, categories: r && r.categories };
       return null;
     }
     _tekenAlles() {
@@ -281,21 +299,20 @@
       var plan = this._planRecept(this._planVoor(vandaag));
       var self = this;
       if (plan) {
-        var img = this._img(plan);
+        var cat = this._cat(plan);
         vlak.innerHTML =
-          '<div class="sectietitel">Vanavond</div><div class="hero">' +
-          (img ? '<img src="' + esc(img) + '" alt="">' : "") +
-          '<div><div class="hnaam">' + esc(plan.name) + '</div>' +
+          '<div class="sectietitel">Vanavond</div><div class="hero" style="background:' + this._kleur(cat) + '">' +
+          '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div>' +
+          '<div class="hnaam">' + esc(plan.name) + '</div>' +
           '<div class="hmeta">' + esc(dagNaam(vandaag)) + '</div>' +
-          '<button class="knop" id="heroopen">Bekijk recept</button></div></div>';
-        this._koppelFallback(vlak.querySelector(".hero img"), plan);
+          '<button class="knop" id="heroopen">Bekijk recept</button></div>';
         vlak.querySelector("#heroopen").addEventListener("click", function () { self._openRecept(plan); });
       } else {
         vlak.innerHTML =
-          '<div class="sectietitel">Vanavond</div><div class="hero">' +
-          '<div><div class="hnaam">Niets gepland</div>' +
+          '<div class="sectietitel">Vanavond</div><div class="hero" style="background:#17181c">' +
+          '<div class="hnaam">Niets gepland</div>' +
           '<div class="hmeta">Zet een gerecht in de weekplanner van Mealie, of laat je verrassen uit het boek.</div>' +
-          '<button class="knop" id="verras">Verras me</button></div></div>';
+          '<button class="knop" id="verras">Verras me</button></div>';
         vlak.querySelector("#verras").addEventListener("click", function () {
           if (!self._recepten.length) return;
           var willekeurig = self._recepten[Math.floor(Math.random() * self._recepten.length)];
@@ -313,7 +330,9 @@
         var rec = this._planRecept(this._planVoor(iso));
         if (rec) {
           heeft = true;
-          html += '<div class="dag" data-id="' + esc(rec.recipe_id || "") + '"><div class="dnaam">' + esc(dagNaam(iso)) + '</div>' +
+          var cat = this._cat(rec);
+          html += '<div class="dag" data-id="' + esc(rec.recipe_id || "") + '" style="background:' + this._kleur(cat) + '">' +
+            '<div class="dnaam">' + esc(dagNaam(iso)) + '</div>' +
             '<div class="dgerecht">' + esc(rec.name) + '</div></div>';
         }
       }
@@ -339,22 +358,16 @@
       });
       var self = this;
       boek.innerHTML = lijst.map(function (r) {
-        var img = self._img(r);
+        var cat = self._cat(r);
+        var basis = self._basis(r);
         var meta = [];
         if (r.total_time) meta.push(r.total_time);
-        if (r.recipe_servings) meta.push(r.recipe_servings + " pers.");
-        return '<div class="tegel" data-id="' + esc(r.recipe_id) + '"><div class="cov">' +
-          '<div class="letter">' + esc((r.name || "?").charAt(0)) + '</div>' +
-          (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '') +
-          '</div><div class="tnaam">' + esc(r.name) + '</div>' +
-          '<div class="tmeta">' + esc(meta.join(" · ") || " ") + '</div></div>';
+        meta.push(fmtAantal(basis.aantal) + " " + woordVoor(basis.woord, basis.aantal));
+        return '<div class="tegel" data-id="' + esc(r.recipe_id) + '" style="background:' + self._kleur(cat) + '">' +
+          '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div>' +
+          '<div class="tnaam">' + esc(r.name) + '</div>' +
+          '<div class="tmeta">' + esc(meta.join(" · ")) + '</div></div>';
       }).join("");
-      Array.prototype.forEach.call(boek.querySelectorAll(".tegel"), function (t) {
-        var tid = t.getAttribute("data-id");
-        var trec = null;
-        self._recepten.forEach(function (x) { if (x.recipe_id === tid) trec = x; });
-        if (trec) self._koppelFallback(t.querySelector("img"), trec);
-      });
       melding.textContent = this._recepten.length
         ? (lijst.length ? "" : "Geen recept gevonden voor je zoekopdracht.")
         : "Nog geen recepten gevonden.";
@@ -375,36 +388,78 @@
       detail.innerHTML = '<button class="sluit" id="dsluit">×</button><div class="melding">Recept laden...</div>';
       detail.querySelector("#dsluit").addEventListener("click", function () { detail.classList.remove("open"); });
       this._service("get_recipe", { recipe_id: recept.recipe_id }).then(function (res) {
-        var r = res.recipe || recept;
-        self._tekenDetail(r);
+        self._tekenDetail(res.recipe || recept);
       }).catch(function () {
         self._tekenDetail(recept);
       });
     }
+    _ingredientTekst(ing, factor) {
+      if (ing.title) return null;
+      var q = parseFloat(ing.quantity);
+      if (q && q > 0) {
+        var delen = [fmtAantal(q * factor)];
+        if (ing.unit && ing.unit.name) delen.push(ing.unit.name);
+        if (ing.food && ing.food.name) delen.push(ing.food.name);
+        var tekst = delen.join(" ");
+        if (ing.note) tekst += " " + ing.note;
+        return tekst;
+      }
+      return ing.display || ing.note || ((ing.food && ing.food.name) || "");
+    }
+    _tekenIngredienten() {
+      var vlak = this._root.getElementById("dingredienten");
+      if (!vlak || !this._detail) return;
+      var factor = this._detail.aantal / this._detail.basis;
+      var self = this;
+      var html = (this._detail.recept.ingredients || []).map(function (ing) {
+        if (ing.title) return '<div class="ingtitel">' + esc(ing.title) + '</div>';
+        return '<div class="ing">' + esc(self._ingredientTekst(ing, factor)) + '</div>';
+      }).join("");
+      vlak.innerHTML = html || '<div class="melding">Geen ingrediënten.</div>';
+      var waarde = this._root.getElementById("swaarde");
+      if (waarde) waarde.innerHTML = 'Voor <b>' + fmtAantal(this._detail.aantal) + '</b> ' + esc(woordVoor(this._detail.woord, this._detail.aantal));
+    }
     _tekenDetail(r) {
       var detail = this._root.getElementById("detail");
-      var img = this._img(r);
+      var cat = this._cat(r);
+      var basis = this._basis(r);
+      this._detail = { recept: r, basis: basis.aantal, aantal: basis.aantal, woord: basis.woord };
       var chips = "";
       if (r.prep_time) chips += '<span class="chip">Voorbereiding <b>' + esc(r.prep_time) + '</b></span>';
       if (r.perform_time || r.total_time) chips += '<span class="chip">Tijd <b>' + esc(r.perform_time || r.total_time) + '</b></span>';
-      if (r.recipe_servings) chips += '<span class="chip">Voor <b>' + esc(r.recipe_servings) + ' personen</b></span>';
-      var ings = (r.ingredients || []).map(function (ing) {
-        var tekst = ing.display || ing.note || ((ing.food && ing.food.name) || "");
-        return '<div class="ing">' + esc(tekst) + '</div>';
-      }).join("");
+      chips += '<span class="scaler"><button id="smin" aria-label="minder">−</button>' +
+        '<span class="swaarde" id="swaarde"></span>' +
+        '<button id="splus" aria-label="meer">+</button></span>';
       var stappen = (r.instructions || []).map(function (s, i) {
         return '<div class="stap"><div class="nr">' + (i + 1) + '</div><div class="txt">' + esc(s.text || "") + '</div></div>';
       }).join("");
       detail.innerHTML =
         '<button class="sluit" id="dsluit">×</button>' +
-        '<div class="dtop">' + (img ? '<img class="dcov" src="' + esc(img) + '" alt="">' : "") +
+        '<div class="dtop"><div class="dblok" style="background:' + this._kleur(cat) + '">' +
+        '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div></div>' +
         '<div><h2>' + esc(r.name) + '</h2>' +
-        (r.description ? '<div class="ddesc">' + esc(r.description) + '</div>' : "") +
+        (r.description ? '<div class="ddesc dicht" id="ddesc">' + esc(r.description) + '</div><button class="meerknop" id="meerknop">Lees meer</button>' : "") +
         '<div class="chips">' + chips + '</div></div></div>' +
-        '<div class="dkolommen"><div><h3>Ingrediënten</h3>' + (ings || '<div class="melding">Geen ingrediënten.</div>') + '</div>' +
+        '<div class="dkolommen"><div><h3>Ingrediënten</h3><div id="dingredienten"></div></div>' +
         '<div><h3>Bereiding</h3>' + (stappen || '<div class="melding">Geen stappen.</div>') + '</div></div>';
-      this._koppelFallback(detail.querySelector("img.dcov"), r);
+      var self = this;
       detail.querySelector("#dsluit").addEventListener("click", function () { detail.classList.remove("open"); });
+      var meer = detail.querySelector("#meerknop");
+      if (meer) {
+        meer.addEventListener("click", function () {
+          var d = detail.querySelector("#ddesc");
+          var dicht = d.classList.toggle("dicht");
+          meer.textContent = dicht ? "Lees meer" : "Lees minder";
+        });
+      }
+      detail.querySelector("#smin").addEventListener("click", function () {
+        if (self._detail.aantal > 1) { self._detail.aantal -= 1; self._tekenIngredienten(); }
+      });
+      detail.querySelector("#splus").addEventListener("click", function () {
+        var max = Math.max(40, self._detail.basis * 3);
+        if (self._detail.aantal < max) { self._detail.aantal += 1; self._tekenIngredienten(); }
+      });
+      this._tekenIngredienten();
       detail.scrollTop = 0;
     }
   }
