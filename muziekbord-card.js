@@ -1,4 +1,8 @@
 /*
+  Muziekbord v2.6.0 - Spotify-covers op de playlisttegels (live van
+  Spotify's CDN, met de bibliotheekhoes als terugval) plus Spotify-
+  styling (gedraaid hoesje met schaduw) en een vijftiende tegel:
+  Hot Hits NL (cover van Spotify, speelt de Top 40 NL-benadering).
   Muziekbord v2.5.2 - Dance-tegel wijst naar 360 Dance (spiegel van
   Spotify's 360 Dance-lijst) in plaats van de TikTok Dance-lijst.
   Muziekbord v2.5.1 - Kinderdisco-tegel wijst naar de Nederlandse
@@ -287,7 +291,9 @@
   .plnaam{ position:relative; z-index:1; margin:0 96px 0 18px; font-size:21px; font-weight:700;
     color:#ffffff; line-height:1.18; display:-webkit-box; -webkit-line-clamp:2;
     -webkit-box-orient:vertical; overflow:hidden; }
-  .plart{ position:absolute; right:0; top:0; width:84px; height:84px; flex:none;
+  .plart{ position:absolute; right:4px; top:50%; width:74px; height:74px; flex:none;
+    transform:translateY(-50%) rotate(25deg); border-radius:6px;
+    box-shadow:0 10px 20px rgba(0,0,0,.45);
     background:rgba(0,0,0,.22); display:flex; align-items:center; justify-content:center;
     overflow:hidden; }
   .plart img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
@@ -464,19 +470,20 @@
   // tegel die versie (met hoes), anders de bronlijst op "uri" zonder hoes.
   var PLCATS = [
     { label: "Speciaal voor jou", match: "Infinite Mix (favorites)", uri: "library://playlist/8", kleur: "#8d67ab" },
-    { label: "Hitlijsten", match: "Radio 538 TOP 50 - 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLWP_Fr__lD1e-JxsiS6ObD8kA4I--QG_t", kleur: "#e8115b" },
+    { label: "Hitlijsten", match: "Radio 538 TOP 50 - 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLWP_Fr__lD1e-JxsiS6ObD8kA4I--QG_t", kleur: "#e8115b", cover: "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da841cec20a7a8c1ff2fea753b64" },
+    { label: "Hot Hits NL", match: "Top 40 2026 - Top 40 Nederland - Top 40 NL & Hot Hits 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLBTanuC8SLeZ_9iVo6Rbf4_lBD8S4--h-", kleur: "#0e9f8a", cover: "https://i.scdn.co/image/ab67706f00000002e279c1462bd848974fb5d870" },
     { label: "Kids & familie", match: "Kinderen voor kinderen", uri: "ytmusic_free--sdHEueeX://playlist/VLPL7D004280D118EF61", kleur: "#2d46b9" },
     { label: "Kinderdisco", match: "MINIDISCO | NEDERLANDS", uri: "ytmusic_free--sdHEueeX://playlist/VLPLzDZvvekbRQ2HnvZ_DjE-h8Rzz-0kqU8q", kleur: "#e61e32" },
-    { label: "Nieuwe releases", match: "VEVO 2026 New Songs - Music Playlist 2026 - New Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLRXkxxi5lXuVpVQlSsVxXTQitKXrM0B2E", kleur: "#608108" },
-    { label: "Happy beats", match: "Happy songs / Upbeat songs / Feel-good songs / Songs that make you smile, dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLx2Jv96o522ORh69HaDKClrz2Midqj8AE", kleur: "#f59b23" },
+    { label: "Nieuwe releases", match: "VEVO 2026 New Songs - Music Playlist 2026 - New Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLRXkxxi5lXuVpVQlSsVxXTQitKXrM0B2E", kleur: "#608108", cover: "https://i.scdn.co/image/ab67706f00000002ba8933f05ef07ab7e97ab049" },
+    { label: "Happy beats", match: "Happy songs / Upbeat songs / Feel-good songs / Songs that make you smile, dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLx2Jv96o522ORh69HaDKClrz2Midqj8AE", kleur: "#f59b23", cover: "https://i.scdn.co/image/ab67706f0000000249a1ed33d2ca64e6a5d0e550" },
     { label: "Foute Party", match: "Foute Party Q-Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLNOPG6OiFPrfy-nrTga_q2ozRwGlhYSGT", kleur: "#ba5d07" },
     { label: "90s", match: "Greatest 90s Music Hits - Best Songs of 1990 to 2000", uri: "ytmusic_free--sdHEueeX://playlist/VPLYVjGTi85afou-GAHkhC6OgU7Merg0G0B", kleur: "#7358ff" },
-    { label: "00s", match: "Early 2000's Throwbacks - Best Songs of Early 00s", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDef6fout0FTkoIXW_DtGHGBtoL7F_JRK", kleur: "#148a08" },
-    { label: "Pop", match: "New Pop Songs 2026 - Pop Music 2026 - New Pop & Pop Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDIoUOhQQPlUDNpjEYTTE9tb-QvUHUSMt", kleur: "#0d73ec" },
-    { label: "Dance", match: "360 Dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLuzEFfLk4sb_n4zBXTkfmRfcfVVtta2MZ", kleur: "#e1118b" },
-    { label: "Funk", match: "Funk Essentials", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxA5-sIPuX2lbuNaLwAF4pqJV_cFi6-fJ", kleur: "#bc5900" },
-    { label: "Hiphop", match: "Rap Playlist 2026 - Best Rap Songs - Rap 2026 & Top Rap Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPL3-sRm8xAzY9Qd1BoHHYFXRMUQlB4BZNt", kleur: "#777777" },
-    { label: "Ambient", match: "Relaxing Chillout Music | Ambient Music Collection", uri: "ytmusic_free--sdHEueeX://playlist/VLPL-gxMXBZAiU0QhZKT8_I-XlRHCYFHohKG", kleur: "#1e3264" }
+    { label: "00s", match: "Early 2000's Throwbacks - Best Songs of Early 00s", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDef6fout0FTkoIXW_DtGHGBtoL7F_JRK", kleur: "#148a08", cover: "https://i.scdn.co/image/ab67706f00000002043bfef44142136749fc2917" },
+    { label: "Pop", match: "New Pop Songs 2026 - Pop Music 2026 - New Pop & Pop Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDIoUOhQQPlUDNpjEYTTE9tb-QvUHUSMt", kleur: "#0d73ec", cover: "https://i.scdn.co/image/ab67706f00000002960019ea66cba66a44fdd4c2" },
+    { label: "Dance", match: "360 Dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLuzEFfLk4sb_n4zBXTkfmRfcfVVtta2MZ", kleur: "#e1118b", cover: "https://i.scdn.co/image/ab67706f000000020245aa997aa0e9599271f716" },
+    { label: "Funk", match: "Funk Essentials", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxA5-sIPuX2lbuNaLwAF4pqJV_cFi6-fJ", kleur: "#bc5900", cover: "https://i.scdn.co/image/ab67706f000000027afddc17378f8f1386f91848" },
+    { label: "Hiphop", match: "Rap Playlist 2026 - Best Rap Songs - Rap 2026 & Top Rap Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPL3-sRm8xAzY9Qd1BoHHYFXRMUQlB4BZNt", kleur: "#777777", cover: "https://i.scdn.co/image/ab67706f00000002876581e4be85838f0e1ad09d" },
+    { label: "Ambient", match: "Relaxing Chillout Music | Ambient Music Collection", uri: "ytmusic_free--sdHEueeX://playlist/VLPL-gxMXBZAiU0QhZKT8_I-XlRHCYFHohKG", kleur: "#1e3264", cover: "https://i.scdn.co/image/ab67706f0000000226b7b546f240016f02447692" }
   ];
   // Root-nodes uit MA (op titel gematcht); voedt de chips via _verwerkRoot.
   var CATS = [
@@ -1311,8 +1318,8 @@
       });
       var tegels = PLCATS.map(function (c) {
         var it = opNaam[c.match];
-        var img = null;
-        if (it) {
+        var img = c.cover || null;
+        if (!img && it) {
           if (typeof it.image === "string") img = it.image;
           else if (it.image && typeof it.image.path === "string") img = it.image.path;
         }
