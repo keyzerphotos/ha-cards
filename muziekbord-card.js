@@ -1,4 +1,9 @@
 /*
+  Muziekbord v2.5.0 - sectie "Playlists" met 14 categorietegels in
+  Spotify-zoekschermstijl (o.a. Hitlijsten, Kids & familie, Kinderdisco,
+  Foute Party, 90s en 00s). Elke tegel speelt de bibliotheekversie uit
+  Music Assistant als die er is, anders de bronlijst. De home-weergave
+  scrollt nu verticaal zodat alle secties passen.
   Muziekbord v2.4.2 - Efteling Kids Radio wijst nu naar de echte stream
   (media.hostin.live; de oude streamtheworld-mount speelt een Top 40-zender)
   en heeft het echte Efteling-logo (radiotime-CDN).
@@ -268,6 +273,21 @@
   .hoes .hnaam{ margin-top:12px; font-size:20px; font-weight:600; color:#ffffff;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .hoes .hsub{ font-size:16px; color:#b3b3b3; margin-top:3px; }
+  /* v2.5: home scrollt verticaal; playlist-categorietegels */
+  #viewhome{ flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+  #viewhome::-webkit-scrollbar{ display:none; }
+  .plraster{ display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:14px; }
+  .pltegel{ position:relative; height:84px; border-radius:12px; overflow:hidden;
+    cursor:pointer; user-select:none; display:flex; align-items:center; }
+  .pltegel:active{ filter:brightness(1.18); }
+  .plnaam{ position:relative; z-index:1; margin:0 96px 0 18px; font-size:21px; font-weight:700;
+    color:#ffffff; line-height:1.18; display:-webkit-box; -webkit-line-clamp:2;
+    -webkit-box-orient:vertical; overflow:hidden; }
+  .plart{ position:absolute; right:0; top:0; width:84px; height:84px; flex:none;
+    background:rgba(0,0,0,.22); display:flex; align-items:center; justify-content:center;
+    overflow:hidden; }
+  .plart img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .plart .mono{ font-size:26px; font-weight:800; color:#ffffff; }
   /* Grote speler (overlay, opent via de hoes in de speelbalk) */
   .sbart{ cursor:pointer; }
   .groot{ position:absolute; inset:0; background:linear-gradient(180deg,#1e1e1e 0%,#0a0a0a 72%); z-index:6; display:none; }
@@ -325,6 +345,10 @@
           <div class="chips" id="chips"></div>
           <div class="sectiekop"><span class="sk-titel">Snelkeuze</span><span class="sk-context" id="skcontext">Vaste zenders</span></div>
           <div class="raster" id="radiorij"></div>
+          <div id="playlists">
+            <div class="sectiekop"><span class="sk-titel">Playlists</span><span class="sk-context">Categorieën</span></div>
+            <div class="plraster" id="plrij"></div>
+          </div>
           <div id="voorjou" style="display:none">
             <div class="sectiekop"><span class="sk-titel">Iets voor jou</span><span class="sk-context">Uit je bibliotheek</span></div>
             <div class="hoesrij" id="voorrij"></div>
@@ -431,6 +455,25 @@
     { naam: "NPO Radio 1", kort: "R1", url: "https://icecast.omroep.nl/radio1-bb-mp3" },
     { naam: "NPO Radio 5", kort: "R5", url: "https://icecast.omroep.nl/radio5-bb-mp3" }
   ];
+  // Playlist-categorieen voor de tegels op home (v2.5). "match" is de exacte
+  // naam in Music Assistant; staat de lijst in de bibliotheek, dan speelt de
+  // tegel die versie (met hoes), anders de bronlijst op "uri" zonder hoes.
+  var PLCATS = [
+    { label: "Speciaal voor jou", match: "Infinite Mix (favorites)", uri: "library://playlist/8", kleur: "#8d67ab" },
+    { label: "Hitlijsten", match: "Radio 538 TOP 50 - 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLWP_Fr__lD1e-JxsiS6ObD8kA4I--QG_t", kleur: "#e8115b" },
+    { label: "Kids & familie", match: "Kinderen voor kinderen", uri: "ytmusic_free--sdHEueeX://playlist/VLPL7D004280D118EF61", kleur: "#2d46b9" },
+    { label: "Kinderdisco", match: "Mini Disco Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxzVmvJWY80pDHGAePBZ7dowURyu-sLCp", kleur: "#e61e32" },
+    { label: "Nieuwe releases", match: "VEVO 2026 New Songs - Music Playlist 2026 - New Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLRXkxxi5lXuVpVQlSsVxXTQitKXrM0B2E", kleur: "#608108" },
+    { label: "Happy beats", match: "Happy songs / Upbeat songs / Feel-good songs / Songs that make you smile, dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLx2Jv96o522ORh69HaDKClrz2Midqj8AE", kleur: "#f59b23" },
+    { label: "Foute Party", match: "Foute Party Q-Music 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLNOPG6OiFPrfy-nrTga_q2ozRwGlhYSGT", kleur: "#ba5d07" },
+    { label: "90s", match: "Greatest 90s Music Hits - Best Songs of 1990 to 2000", uri: "ytmusic_free--sdHEueeX://playlist/VPLYVjGTi85afou-GAHkhC6OgU7Merg0G0B", kleur: "#7358ff" },
+    { label: "00s", match: "Early 2000's Throwbacks - Best Songs of Early 00s", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDef6fout0FTkoIXW_DtGHGBtoL7F_JRK", kleur: "#148a08" },
+    { label: "Pop", match: "New Pop Songs 2026 - Pop Music 2026 - New Pop & Pop Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDIoUOhQQPlUDNpjEYTTE9tb-QvUHUSMt", kleur: "#0d73ec" },
+    { label: "Dance", match: "TikTok Dance 2026 - Tiktok Dance Songs - Dance Songs 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLBTanuC8SLeYgGgRfECgQj3V6sYH61WCt", kleur: "#e1118b" },
+    { label: "Funk", match: "Funk Essentials", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxA5-sIPuX2lbuNaLwAF4pqJV_cFi6-fJ", kleur: "#bc5900" },
+    { label: "Hiphop", match: "Rap Playlist 2026 - Best Rap Songs - Rap 2026 & Top Rap Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPL3-sRm8xAzY9Qd1BoHHYFXRMUQlB4BZNt", kleur: "#777777" },
+    { label: "Ambient", match: "Relaxing Chillout Music | Ambient Music Collection", uri: "ytmusic_free--sdHEueeX://playlist/VLPL-gxMXBZAiU0QhZKT8_I-XlRHCYFHohKG", kleur: "#1e3264" }
+  ];
   // Root-nodes uit MA (op titel gematcht); voedt de chips via _verwerkRoot.
   var CATS = [
     { sleutel: "artists", nl: "Artiesten", mono: "AR" },
@@ -511,7 +554,7 @@
       });
       this._el = {};
       ["stage","ktijd","kdatum","ondertitel","zoekbalk","zoekinput","zoekwis","zoekknop","laadstrook",
-       "viewhome","chips","radiorij","skcontext","voorjou","voorrij","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
+       "viewhome","chips","radiorij","skcontext","voorjou","voorrij","playlists","plrij","bronfout","viewlijst","terugknop","wtitel","wcontext","lijst",
        "sprijen","sbart","sbbron","sbtitel","sbartiest",
        "skipprev","hoofdknop","skipnext","voortgang","sbspeler","demp","volmin","volspoor","volplus","volpct",
        "grootspeler","gssluit","gsart","gsbron","gstitel","gsartiest","gsvoortgang",
@@ -541,11 +584,15 @@
       this._favVoor = 0;
       this._vjVoor = 0;
       this._voorjou = [];
+      this._plVoor = 0;
+      this._playlists = [];
+      this._plBezig = false;
       this._favBezig = false;
       this._snel = ZENDERS.map(function (z) {
         return { naam: z.naam, mono: z.kort, url: z.url, uri: null, img: z.img || null };
       });
       this._tekenSnelkeuze();
+      this._tekenPlaylists(null);
       // Chips: de enige categorienavigatie. Actief wordt een chip pas als
       // de categorie echt bestaat; ontbrekende categorieen worden grijs.
       this._catNodes = {};
@@ -721,6 +768,9 @@
       // Snelkeuze-favorieten laden/verversen (bij start, daarna elke 5 min)
       if (hass.callService && !this._vjBezig && Date.now() - (this._vjVoor || 0) > 300000) {
         this._laadVoorJou();
+      }
+      if (hass.callService && !this._plBezig && Date.now() - (this._plVoor || 0) > 300000) {
+        this._laadPlaylists();
       }
       if (hass.callService && !this._favBezig && Date.now() - (this._favVoor || 0) > 300000) {
         this._laadFavorieten();
@@ -1224,6 +1274,66 @@
       if (this._spelerWeg()) return;
       this._call("music_assistant", "play_media",
         { media_id: v.uri, media_type: v.type, enqueue: "replace" },
+        { entity_id: this._speler });
+    }
+    /* ---------- Playlists (categorietegels) ---------- */
+    _laadPlaylists() {
+      if (!this._hass || !this._hass.callService) return;
+      var self = this;
+      this._plBezig = true;
+      var p;
+      try {
+        p = this._hass.callService("music_assistant", "get_library",
+          { config_entry_id: MA_ENTRY, media_type: "playlist", limit: 50 },
+          undefined, false, true);
+      } catch (e) { p = null; }
+      if (!p || !p.then) { this._plBezig = false; this._plVoor = Date.now(); return; }
+      this._metTimeout(p, 12000).then(function (res) {
+        var items = (res && res.response && res.response.items) || (res && res.items) || [];
+        self._plBezig = false;
+        self._plVoor = Date.now();
+        if (self.isConnected) self._tekenPlaylists(items);
+      }).catch(function () {
+        self._plBezig = false;
+        self._plVoor = Date.now();
+      });
+    }
+    _tekenPlaylists(items) {
+      if (!this._el || !this._el.plrij) return;
+      var self = this;
+      var opNaam = {};
+      (items || []).forEach(function (it) {
+        if (it && it.name && it.uri) opNaam[String(it.name)] = it;
+      });
+      var tegels = PLCATS.map(function (c) {
+        var it = opNaam[c.match];
+        var img = null;
+        if (it) {
+          if (typeof it.image === "string") img = it.image;
+          else if (it.image && typeof it.image.path === "string") img = it.image.path;
+        }
+        return { label: c.label, kleur: c.kleur, mono: monoVan(c.label),
+          uri: it ? String(it.uri) : c.uri, img: img };
+      });
+      this._playlists = tegels;
+      this._el.plrij.innerHTML = tegels.map(function (t, i) {
+        var art = '<span class="mono">' + esc(t.mono) + "</span>" +
+          (t.img ? '<img src="' + esc(t.img) + '" alt="" onerror="this.remove()">' : "");
+        return '<div class="pltegel" data-pl="' + i + '" style="background:' + esc(t.kleur) + '">' +
+          '<div class="plnaam">' + esc(t.label) + '</div>' +
+          '<div class="plart">' + art + "</div></div>";
+      }).join("");
+      Array.prototype.forEach.call(this._el.plrij.querySelectorAll("[data-pl]"), function (el) {
+        el.addEventListener("click", function () {
+          var t = self._playlists[parseInt(el.getAttribute("data-pl"), 10)];
+          if (t) self._speelPlaylist(t);
+        });
+      });
+    }
+    _speelPlaylist(t) {
+      if (this._spelerWeg()) return;
+      this._call("music_assistant", "play_media",
+        { media_id: t.uri, media_type: "playlist", enqueue: "replace" },
         { entity_id: this._speler });
     }
     _toonLijst(titel) {
