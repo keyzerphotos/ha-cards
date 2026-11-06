@@ -1,4 +1,6 @@
 /*
+  Muziekbord v2.5.2 - Dance-tegel wijst naar 360 Dance (spiegel van
+  Spotify's 360 Dance-lijst) in plaats van de TikTok Dance-lijst.
   Muziekbord v2.5.1 - Kinderdisco-tegel wijst naar de Nederlandse
   minidisco (MINIDISCO | NEDERLANDS) in plaats van de Engelstalige lijst.
   Muziekbord v2.5.0 - sectie "Playlists" met 14 categorietegels in
@@ -471,7 +473,7 @@
     { label: "90s", match: "Greatest 90s Music Hits - Best Songs of 1990 to 2000", uri: "ytmusic_free--sdHEueeX://playlist/VPLYVjGTi85afou-GAHkhC6OgU7Merg0G0B", kleur: "#7358ff" },
     { label: "00s", match: "Early 2000's Throwbacks - Best Songs of Early 00s", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDef6fout0FTkoIXW_DtGHGBtoL7F_JRK", kleur: "#148a08" },
     { label: "Pop", match: "New Pop Songs 2026 - Pop Music 2026 - New Pop & Pop Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPLDIoUOhQQPlUDNpjEYTTE9tb-QvUHUSMt", kleur: "#0d73ec" },
-    { label: "Dance", match: "TikTok Dance 2026 - Tiktok Dance Songs - Dance Songs 2026", uri: "ytmusic_free--sdHEueeX://playlist/VLPLBTanuC8SLeYgGgRfECgQj3V6sYH61WCt", kleur: "#e1118b" },
+    { label: "Dance", match: "360 Dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLuzEFfLk4sb_n4zBXTkfmRfcfVVtta2MZ", kleur: "#e1118b" },
     { label: "Funk", match: "Funk Essentials", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxA5-sIPuX2lbuNaLwAF4pqJV_cFi6-fJ", kleur: "#bc5900" },
     { label: "Hiphop", match: "Rap Playlist 2026 - Best Rap Songs - Rap 2026 & Top Rap Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPL3-sRm8xAzY9Qd1BoHHYFXRMUQlB4BZNt", kleur: "#777777" },
     { label: "Ambient", match: "Relaxing Chillout Music | Ambient Music Collection", uri: "ytmusic_free--sdHEueeX://playlist/VLPL-gxMXBZAiU0QhZKT8_I-XlRHCYFHohKG", kleur: "#1e3264" }
