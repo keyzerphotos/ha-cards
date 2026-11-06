@@ -1,4 +1,7 @@
 /*
+  Muziekbord v2.6.1 - zestiende tegel OG Rap (90's best rap mix) en
+  playlists starten altijd in shuffle: het bord zet shuffle aan op de
+  speler voordat een playlist start (de wachtrijen staan ook al aan).
   Muziekbord v2.6.0 - Spotify-covers op de playlisttegels (live van
   Spotify's CDN, met de bibliotheekhoes als terugval) plus Spotify-
   styling (gedraaid hoesje met schaduw) en een vijftiende tegel:
@@ -483,6 +486,7 @@
     { label: "Dance", match: "360 Dance", uri: "ytmusic_free--sdHEueeX://playlist/VLPLuzEFfLk4sb_n4zBXTkfmRfcfVVtta2MZ", kleur: "#e1118b", cover: "https://i.scdn.co/image/ab67706f000000020245aa997aa0e9599271f716" },
     { label: "Funk", match: "Funk Essentials", uri: "ytmusic_free--sdHEueeX://playlist/VLPLxA5-sIPuX2lbuNaLwAF4pqJV_cFi6-fJ", kleur: "#bc5900", cover: "https://i.scdn.co/image/ab67706f000000027afddc17378f8f1386f91848" },
     { label: "Hiphop", match: "Rap Playlist 2026 - Best Rap Songs - Rap 2026 & Top Rap Songs", uri: "ytmusic_free--sdHEueeX://playlist/VLPL3-sRm8xAzY9Qd1BoHHYFXRMUQlB4BZNt", kleur: "#777777", cover: "https://i.scdn.co/image/ab67706f00000002876581e4be85838f0e1ad09d" },
+    { label: "OG Rap", match: "90'S BEST RAP MIX - OLD SCHOOL HIP HOP PLAYLIST - SNOOP DOGG, 2PAC, 50 CENT, EMINEM", uri: "ytmusic_free--sdHEueeX://playlist/VLPLkPAqNiypQy6zCTAlaUAbGPZe17Z2mTRp", kleur: "#262626", cover: "https://i.scdn.co/image/ab67706f000000028908106e49cde03e6d67073e" },
     { label: "Ambient", match: "Relaxing Chillout Music | Ambient Music Collection", uri: "ytmusic_free--sdHEueeX://playlist/VLPL-gxMXBZAiU0QhZKT8_I-XlRHCYFHohKG", kleur: "#1e3264", cover: "https://i.scdn.co/image/ab67706f0000000226b7b546f240016f02447692" }
   ];
   // Root-nodes uit MA (op titel gematcht); voedt de chips via _verwerkRoot.
@@ -1283,6 +1287,10 @@
     }
     _speelVoorJou(v) {
       if (this._spelerWeg()) return;
+      if (v.type === "playlist") {
+        this._call("media_player", "shuffle_set",
+          { shuffle: true }, { entity_id: this._speler });
+      }
       this._call("music_assistant", "play_media",
         { media_id: v.uri, media_type: v.type, enqueue: "replace" },
         { entity_id: this._speler });
@@ -1343,6 +1351,8 @@
     }
     _speelPlaylist(t) {
       if (this._spelerWeg()) return;
+      this._call("media_player", "shuffle_set",
+        { shuffle: true }, { entity_id: this._speler });
       this._call("music_assistant", "play_media",
         { media_id: t.uri, media_type: "playlist", enqueue: "replace" },
         { entity_id: this._speler });
