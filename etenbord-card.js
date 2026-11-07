@@ -1,4 +1,14 @@
 /*
+  Etenbord v1.2 - (borden-eenheid blok 6, 7 nov 2026): de iconen uit
+  Mealie staan nu als omslag op de tegels, in de Vanavond-hero en in de
+  kop van de kookweergave. Beeldroute: /local/eten/<slug>.webp op HA
+  zelf (nooit Mealie-URLs; die breken buiten het thuisnet). Ontbreekt
+  het icoon (de 4 oudere recepten, of een nieuw recept voor de sync),
+  dan valt de omslag terug op een creme vlak met de eerste letter in de
+  categoriekleur. Daaronder blijft de categoriekleur de tegelbasis,
+  zoals v1.1. Nieuw: categoriefilter boven het boek (chips uit de echt
+  voorkomende categorieen, "Alles" eerst), en de zoekbalk zoekt nu ook
+  op categorie. Syncscript: ~/workspace/mealie-verrijking/sync_eten_iconen.py
   Etenbord v1.1 - ontworpen tegels voor alles (besluit Alex, 6 nov 2026):
   geen foto's meer op het bord, maar rustige boekomslagen met de categorie
   erboven en een kleur per categorie (uit Mealie, daar nu overal gevuld).
@@ -60,9 +70,28 @@
   .dag .dnaam::first-letter{ text-transform:uppercase; }
   .dag .dgerecht{ font-size:20px; font-weight:650; margin-top:4px; line-height:1.25; }
   .boek{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; }
-  .tegel{ border-radius:20px; padding:20px 22px; height:208px; display:flex; flex-direction:column;
+  .tegel{ border-radius:20px; overflow:hidden; display:flex; flex-direction:column;
     border:1px solid rgba(255,255,255,0.07); cursor:pointer; }
   .tegel:active{ transform:scale(0.985); }
+  .tegel .tbody{ padding:16px 22px 20px 22px; display:flex; flex-direction:column; flex:1; }
+  .omslag{ position:relative; background:#fff6e6; height:118px; flex:0 0 auto; overflow:hidden; }
+  .omslag .letter{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:58px; font-weight:800; }
+  .omslag img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .hero.metbeeld{ display:flex; gap:28px; }
+  .hero .omslag{ width:212px; height:auto; min-height:212px; border-radius:16px; }
+  .hero .omslag .letter{ font-size:84px; }
+  .domslag{ width:300px; height:216px; border-radius:20px; flex:0 0 auto; overflow:hidden; position:relative;
+    background:#fff6e6; border:1px solid rgba(255,255,255,0.07); }
+  .domslag .letter{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:88px; font-weight:800; }
+  .domslag img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .filters{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .fchip{ display:inline-flex; align-items:center; gap:10px; font-size:20px; color:#d6d6d2; background:#17181c;
+    border:1px solid #2b2d33; border-radius:999px; padding:11px 22px; cursor:pointer; font-family:inherit; }
+  .fchip .stip{ width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,0.28); flex:0 0 auto; }
+  .fchip.actief{ border-color:rgba(223,160,60,0.75); color:#f2f0eb; background:rgba(223,160,60,0.12); }
+  .fchip:active{ transform:scale(0.97); }
   .tegel .tnaam{ font-size:24px; font-weight:750; line-height:1.24; display:-webkit-box; -webkit-line-clamp:3;
     -webkit-box-orient:vertical; overflow:hidden; }
   .tegel .tmeta{ margin-top:auto; font-size:16.5px; color:#f2f0eb; opacity:.62; }
@@ -71,8 +100,6 @@
     padding:30px 44px 60px 44px; display:none; color:#f5f2ea; font-family:'EBInter',system-ui,sans-serif; }
   .detail.open{ display:block; }
   .detail .dtop{ display:flex; gap:30px; align-items:flex-start; }
-  .dblok{ width:300px; height:216px; border-radius:20px; flex:0 0 auto; padding:22px 24px;
-    border:1px solid rgba(255,255,255,0.07); }
   .detail h2{ font-size:40px; font-weight:800; line-height:1.12; }
   .detail .ddesc{ font-size:20.5px; color:#ddd9d0; margin-top:12px; line-height:1.55; max-width:980px; font-weight:450; }
   .detail .ddesc.dicht{ max-height:4.65em; overflow:hidden; }
@@ -116,6 +143,7 @@
     <div id="herovlak"></div>
     <div id="weekvlak"></div>
     <div class="sectietitel">Alle recepten</div>
+    <div class="filters" id="filters"></div>
     <div class="boek" id="boek"></div>
     <div class="melding" id="melding">Recepten laden...</div>
   </div>
@@ -207,6 +235,7 @@
       this._recepten = [];
       this._plan = [];
       this._zoek = "";
+      this._filter = "Alles";
       this._bezig = false;
     }
     set hass(hass) {
@@ -245,6 +274,12 @@
         var m = self._root.getElementById("melding");
         if (m) m.textContent = "Mealie is even niet bereikbaar. Tik op Eten in de balk om het opnieuw te proberen.";
       });
+    }
+    _omslag(r, klasse) {
+      var kleur = this._kleur(this._cat(r));
+      var letter = esc((r.name || "?").trim().charAt(0).toUpperCase());
+      var img = r.slug ? '<img src="/local/eten/' + esc(r.slug) + '.webp" alt="" loading="lazy" onerror="this.remove()">' : "";
+      return '<div class="' + klasse + '"><span class="letter" style="color:' + kleur + '">' + letter + "</span>" + img + "</div>";
     }
     _cat(recept) {
       var cats = (recept && recept.categories) || [];
@@ -291,7 +326,38 @@
       if (sub) sub.textContent = this._recepten.length + " recepten in Mealie";
       this._tekenHero();
       this._tekenWeek();
+      this._tekenFilters();
       this._tekenBoek();
+    }
+    _tekenFilters() {
+      var vlak = this._root.getElementById("filters");
+      if (!vlak) return;
+      var self = this;
+      var gezien = [];
+      this._recepten.forEach(function (r) {
+        var c = self._cat(r);
+        if (gezien.indexOf(c) < 0) gezien.push(c);
+      });
+      var volgorde = Object.keys(CATKLEUR);
+      gezien.sort(function (a, b) {
+        var ia = volgorde.indexOf(a); if (ia < 0) ia = 99;
+        var ib = volgorde.indexOf(b); if (ib < 0) ib = 99;
+        return ia - ib || a.localeCompare(b);
+      });
+      var huidig = this._filter || "Alles";
+      if (huidig !== "Alles" && gezien.indexOf(huidig) < 0) { this._filter = "Alles"; huidig = "Alles"; }
+      var html = '<button class="fchip' + (huidig === "Alles" ? " actief" : "") + '" data-cat="Alles">Alles</button>';
+      html += gezien.map(function (c) {
+        return '<button class="fchip' + (huidig === c ? " actief" : "") + '" data-cat="' + esc(c) + '"><span class="stip" style="background:' + self._kleur(c) + '"></span>' + esc(c) + "</button>";
+      }).join("");
+      vlak.innerHTML = html;
+      Array.prototype.forEach.call(vlak.querySelectorAll(".fchip"), function (chip) {
+        chip.addEventListener("click", function () {
+          self._filter = chip.getAttribute("data-cat");
+          self._tekenFilters();
+          self._tekenBoek();
+        });
+      });
     }
     _tekenHero() {
       var vlak = this._root.getElementById("herovlak");
@@ -301,11 +367,12 @@
       if (plan) {
         var cat = this._cat(plan);
         vlak.innerHTML =
-          '<div class="sectietitel">Vanavond</div><div class="hero" style="background:' + this._kleur(cat) + '">' +
-          '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div>' +
+          '<div class="sectietitel">Vanavond</div><div class="hero metbeeld" style="background:' + this._kleur(cat) + '">' +
+          this._omslag(plan, "omslag") +
+          '<div class="hinhoud"><div class="cat">' + esc(cat) + '</div><div class="lijn"></div>' +
           '<div class="hnaam">' + esc(plan.name) + '</div>' +
           '<div class="hmeta">' + esc(dagNaam(vandaag)) + '</div>' +
-          '<button class="knop" id="heroopen">Bekijk recept</button></div>';
+          '<button class="knop" id="heroopen">Bekijk recept</button></div></div>';
         vlak.querySelector("#heroopen").addEventListener("click", function () { self._openRecept(plan); });
       } else {
         vlak.innerHTML =
@@ -353,24 +420,29 @@
       var boek = this._root.getElementById("boek");
       var melding = this._root.getElementById("melding");
       var zoek = this._zoek;
-      var lijst = this._recepten.filter(function (r) {
-        return !zoek || (r.name || "").toLowerCase().indexOf(zoek) >= 0;
-      });
       var self = this;
+      var filter = this._filter || "Alles";
+      var lijst = this._recepten.filter(function (r) {
+        if (filter !== "Alles" && self._cat(r) !== filter) return false;
+        if (!zoek) return true;
+        return (r.name || "").toLowerCase().indexOf(zoek) >= 0 || self._cat(r).toLowerCase().indexOf(zoek) >= 0;
+      });
       boek.innerHTML = lijst.map(function (r) {
         var cat = self._cat(r);
         var basis = self._basis(r);
         var meta = [];
         if (r.total_time) meta.push(r.total_time);
         meta.push(fmtAantal(basis.aantal) + " " + woordVoor(basis.woord, basis.aantal));
-        return '<div class="tegel" data-id="' + esc(r.recipe_id) + '" style="background:' + self._kleur(cat) + '">' +
+        return '<div class="tegel" data-id="' + esc(r.recipe_id) + '">' +
+          self._omslag(r, "omslag") +
+          '<div class="tbody" style="background:' + self._kleur(cat) + '">' +
           '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div>' +
           '<div class="tnaam">' + esc(r.name) + '</div>' +
-          '<div class="tmeta">' + esc(meta.join(" · ")) + '</div></div>';
+          '<div class="tmeta">' + esc(meta.join(" · ")) + '</div></div></div>';
       }).join("");
-      melding.textContent = this._recepten.length
-        ? (lijst.length ? "" : "Geen recept gevonden voor je zoekopdracht.")
-        : "Nog geen recepten gevonden.";
+      melding.textContent = !this._recepten.length
+        ? "Nog geen recepten gevonden."
+        : (lijst.length ? "" : (zoek ? "Geen recept gevonden voor je zoekopdracht." : "Geen recepten in deze categorie."));
       Array.prototype.forEach.call(boek.querySelectorAll(".tegel"), function (t) {
         t.addEventListener("click", function () {
           var id = t.getAttribute("data-id");
@@ -435,9 +507,8 @@
       }).join("");
       detail.innerHTML =
         '<button class="sluit" id="dsluit">×</button>' +
-        '<div class="dtop"><div class="dblok" style="background:' + this._kleur(cat) + '">' +
-        '<div class="cat">' + esc(cat) + '</div><div class="lijn"></div></div>' +
-        '<div><h2>' + esc(r.name) + '</h2>' +
+        '<div class="dtop">' + this._omslag(r, "domslag") +
+        '<div><div class="cat">' + esc(cat) + '</div><div class="lijn"></div><h2>' + esc(r.name) + '</h2>' +
         (r.description ? '<div class="ddesc dicht" id="ddesc">' + esc(r.description) + '</div><button class="meerknop" id="meerknop">Lees meer</button>' : "") +
         '<div class="chips">' + chips + '</div></div></div>' +
         '<div class="dkolommen"><div><h3>Ingrediënten</h3><div id="dingredienten"></div></div>' +
