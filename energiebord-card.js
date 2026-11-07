@@ -15,21 +15,19 @@
           op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
-   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden.
+   v1.1.0 (7 nov 2026, borden-eenheid blok 5): op de gedeelde
+   bord-basis.js. Eigen fontblok, NAV-array en de gedeelde CSS-chunks
+   zijn weg; tegels heten nu .tegel en staan op de basismaat 24/26
+   (was .tile 26/28). De semantische stroomkleuren blijven lokaal als
+   benoemde uitzondering: .gold #e9c886 (opwek) en .green #8fce6e
+   (teruglevering), gelijk aan de TOK-waarden in de basis. */
+import { zorgFont, navHtml, koppelNav, BASIS_CSS, startFit } from "./bord-basis.js";
+
 (function () {
   "use strict";
 
-  var FONT_ID = "familiebord-fonts";
-  if (!document.getElementById(FONT_ID)) {
-    var st = document.createElement("style");
-    st.id = FONT_ID;
-    st.textContent =
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:300;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2) format('woff2');}";
-    document.head.appendChild(st);
-  }
+  zorgFont();
 
   var E = {
     p1: "sensor.p1_meter_vermogen",
@@ -64,20 +62,8 @@
     return v.toLocaleString("nl-NL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"], ["Eten", "/eten-bord"]];
-  var NAV_ACTIVE = "Energie";
-
-  var CSS = `
-  :host{ display:block; position:fixed; inset:0; height:100%; overflow:hidden; background:#08090b;
-    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color:#f4f4f2;
-    -webkit-font-smoothing:antialiased; }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{ position:relative; width:1920px; height:1200px; transform-origin:top left; overflow:hidden;
-    background:radial-gradient(1200px 800px at 30% 42%, #101216 0%, #08090b 62%); }
-  .caps{ font-size:21px; letter-spacing:.34em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .topbar{ position:absolute; top:56px; left:80px; right:80px; display:flex; justify-content:space-between; align-items:baseline; }
-  .klok{ font-size:30px; font-weight:300; }
-  .topline{ position:absolute; top:112px; left:80px; right:80px; height:1px; background:rgba(255,255,255,.08); }
+  var CSS = BASIS_CSS + `
+  .stage{ -webkit-font-smoothing:antialiased; }
   .divider{ position:absolute; top:170px; bottom:150px; left:960px; width:1px; background:rgba(255,255,255,.07); }
 
   .col{ position:absolute; top:150px; }
@@ -102,21 +88,10 @@
   .srow .v{ font-weight:500; }
 
   .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:26px; }
-  .tile{ border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:26px 28px; background:rgba(255,255,255,.02); }
-  .tile .tcaps{ font-size:18px; letter-spacing:.26em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .tile .tv{ margin-top:14px; font-size:62px; font-weight:300; line-height:1; }
-  .tile .tv small{ font-size:26px; color:#a3a3a0; }
+  .tegel .tv{ margin-top:14px; font-size:62px; font-weight:300; line-height:1; }
+  .tegel .tv small{ font-size:26px; color:#a3a3a0; }
   .totalen{ margin-top:40px; }
 
-  .nav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px;
-    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; z-index:40; }
-  .nav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
-    border:1px solid transparent; letter-spacing:.04em; }
-  .nav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
-
-  .stage.portrait{ width:900px; height:1600px; }
-  .stage.portrait .topbar{ top:40px; left:44px; right:44px; }
-  .stage.portrait .topline{ top:94px; left:44px; right:44px; }
   .stage.portrait .divider{ display:none; }
   .stage.portrait .col{ left:44px; width:812px; }
   .stage.portrait .col.left{ top:118px; }
@@ -128,11 +103,9 @@
   .stage.portrait .frow .v{ font-size:31px; }
   .stage.portrait .status{ margin-top:22px; }
   .stage.portrait .tiles{ margin-top:18px; gap:12px; }
-  .stage.portrait .tile{ padding:18px 20px; }
-  .stage.portrait .tile .tv{ font-size:46px; margin-top:10px; }
+  .stage.portrait .tegel{ padding:18px 20px; }
+  .stage.portrait .tegel .tv{ font-size:46px; margin-top:10px; }
   .stage.portrait .totalen{ margin-top:24px; }
-  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
-  .stage.portrait .nav a{ font-size:19px; padding:10px 22px; }
   `;
 
   class EnergiebordCard extends HTMLElement {
@@ -159,9 +132,7 @@
       this._built = true;
       this._today = null;
       var root = this.shadowRoot || this.attachShadow({ mode: "open" });
-      var navHtml = NAV.map(function (n) {
-        return '<a href="' + n[1] + '"' + (n[0] === NAV_ACTIVE ? ' class="active"' : "") + ">" + n[0] + "</a>";
-      }).join("");
+      var navHtmlStr = navHtml("Energie");
       root.innerHTML = "<style>" + CSS + "</style>" +
       '<div class="stage" id="stage">' +
         '<div class="topbar"><span class="caps" id="datum">Energie</span><span class="klok" id="klok">--:--</span></div>' +
@@ -184,10 +155,10 @@
         '<div class="col right">' +
           '<span class="caps">Vandaag</span>' +
           '<div class="tiles">' +
-            '<div class="tile"><div class="tcaps">Verbruikt</div><div class="tv"><span id="timp">--</span> <small>kWh</small></div></div>' +
-            '<div class="tile"><div class="tcaps">Teruggeleverd</div><div class="tv"><span id="texp">--</span> <small>kWh</small></div></div>' +
-            '<div class="tile"><div class="tcaps">Opgewekt</div><div class="tv"><span id="tsol">--</span> <small>kWh</small></div></div>' +
-            '<div class="tile"><div class="tcaps">Gas</div><div class="tv"><span id="tgas">--</span> <small>m³</small></div></div>' +
+            '<div class="tegel"><div class="tcaps">Verbruikt</div><div class="tv"><span id="timp">--</span> <small>kWh</small></div></div>' +
+            '<div class="tegel"><div class="tcaps">Teruggeleverd</div><div class="tv"><span id="texp">--</span> <small>kWh</small></div></div>' +
+            '<div class="tegel"><div class="tcaps">Opgewekt</div><div class="tv"><span id="tsol">--</span> <small>kWh</small></div></div>' +
+            '<div class="tegel"><div class="tcaps">Gas</div><div class="tv"><span id="tgas">--</span> <small>m³</small></div></div>' +
           '</div>' +
           '<div class="totalen">' +
             '<span class="caps">Totalen</span>' +
@@ -200,25 +171,9 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="nav">' + navHtml + '</div>' +
+        '<div class="nav">' + navHtmlStr + '</div>' +
       '</div>';
-      var hostEl = this;
-      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
-        a.addEventListener("click", function (ev) {
-          var href = a.getAttribute("href");
-          if (!href) return;
-          if (href.indexOf("/local/") === 0) return;
-          if (window.location.pathname === href) { ev.preventDefault(); return; }
-          try {
-            ev.preventDefault();
-            window.history.pushState(null, "", href);
-            var e = new Event("location-changed", { bubbles: true, composed: true });
-            e.detail = { replace: false };
-            window.dispatchEvent(e);
-            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
-          } catch (err) { window.location.href = href; }
-        });
-      });
+      koppelNav(root, this);
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "huis", "huissub", "zon", "net", "netlabel", "sestatus", "grid",
         "tarief", "timp", "texp", "tsol", "tgas", "saldo", "totimp", "totexp", "totsol", "totgas"];
@@ -228,12 +183,7 @@
       this._tickClock();
       this._clockTimer = setInterval(function () { self._tickClock(); }, 1000);
       this._histTimer = setInterval(function () { self._fetchToday(); }, 300000);
-      this._ro = new ResizeObserver(function () { self._fit(); });
-      this._ro.observe(this);
-      this._onResize = function () { self._fit(); };
-      window.addEventListener("resize", this._onResize);
-      this._fit();
-      setTimeout(function () { self._fit(); }, 300);
+      this._stopFit = startFit(this, q("stage"));
       if (this._hass) { this._update(); this._fetchToday(); }
     }
     _tickClock() {
@@ -244,19 +194,6 @@
       if (el.klok.textContent !== t) el.klok.textContent = t;
       var dt = d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
       if (el.datum.textContent !== dt) el.datum.textContent = dt;
-    }
-    _fit() {
-      var stage = this._el && this._el.stage;
-      if (!stage) return;
-      var w = this.clientWidth || window.innerWidth || 1920;
-      var h = this.clientHeight || window.innerHeight || 1200;
-      var portrait = h > w;
-      stage.classList.toggle("portrait", portrait);
-      var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
-      var s = Math.min(w / SW, h / SH);
-      stage.style.transform = "scale(" + s + ")";
-      stage.style.marginLeft = ((w - SW * s) / 2) + "px";
-      stage.style.marginTop = ((h - SH * s) / 2) + "px";
     }
     _fetchToday() {
       if (!this._hass || !this._hass.connection || !this._hass.connection.sendMessagePromise) return;
@@ -339,10 +276,9 @@
       el.totgas.textContent = fmtKwh(num(this._st(E.gasT)), 0) + " m³";
     }
     disconnectedCallback() {
-      if (this._ro) this._ro.disconnect();
+      if (this._stopFit) this._stopFit();
       if (this._clockTimer) clearInterval(this._clockTimer);
       if (this._histTimer) clearInterval(this._histTimer);
-      if (this._onResize) window.removeEventListener("resize", this._onResize);
     }
   }
 

@@ -14,23 +14,20 @@
           op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
-   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden.
+   v1.1.0 (7 nov 2026, borden-eenheid blok 5): op de gedeelde
+   bord-basis.js. Eigen fontblok, NAV-array en gedeelde CSS-chunks
+   zijn weg; tegels heten nu .tegel (maat was al 24/26); de accuring
+   loopt via ringCss uit de basis. Inhoud en bediening ongewijzigd. */
+import { zorgFont, navHtml, koppelNav, ringCss, BASIS_CSS, startFit } from "./bord-basis.js";
+
 (function () {
   "use strict";
 
-  var FONT_ID = "familiebord-fonts";
-  if (!document.getElementById(FONT_ID)) {
-    var st = document.createElement("style");
-    st.id = FONT_ID;
-    st.textContent =
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:300;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2) format('woff2');}";
-    document.head.appendChild(st);
-  }
+  zorgFont();
 
   var P = "fordpass_wf0fxxwpmhld21343_";
+
   var E = {
     soc: "sensor." + P + "soc",
     range: "sensor." + P + "elveh",
@@ -69,20 +66,8 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"], ["Eten", "/eten-bord"]];
-  var NAV_ACTIVE = "Auto";
-
-  var CSS = `
-  :host{ display:block; position:fixed; inset:0; height:100%; overflow:hidden; background:#08090b;
-    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color:#f4f4f2;
-    -webkit-font-smoothing:antialiased; }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{ position:relative; width:1920px; height:1200px; transform-origin:top left; overflow:hidden;
-    background:radial-gradient(1200px 800px at 30% 42%, #101216 0%, #08090b 62%); }
-  .caps{ font-size:21px; letter-spacing:.34em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .topbar{ position:absolute; top:56px; left:80px; right:80px; display:flex; justify-content:space-between; align-items:baseline; }
-  .klok{ font-size:30px; font-weight:300; }
-  .topline{ position:absolute; top:112px; left:80px; right:80px; height:1px; background:rgba(255,255,255,.08); }
+  var CSS = BASIS_CSS + `
+  .stage{ -webkit-font-smoothing:antialiased; }
   .divider{ position:absolute; top:170px; bottom:150px; left:960px; width:1px; background:rgba(255,255,255,.07); }
 
   .col{ position:absolute; top:150px; }
@@ -103,11 +88,9 @@
   .carimg{ margin-top:22px; width:600px; max-height:250px; object-fit:contain; }
 
   .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:26px; }
-  .tile{ border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:24px 26px; background:rgba(255,255,255,.02); }
-  .tile .tcaps{ font-size:18px; letter-spacing:.26em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .tile .tv{ margin-top:12px; font-size:56px; font-weight:300; line-height:1; }
-  .tile .tv small{ font-size:25px; color:#a3a3a0; }
-  .tile .tsub{ margin-top:9px; font-size:21px; color:#a3a3a0; }
+  .tegel .tv{ margin-top:12px; font-size:56px; font-weight:300; line-height:1; }
+  .tegel .tv small{ font-size:25px; color:#a3a3a0; }
+  .tegel .tsub{ margin-top:9px; font-size:21px; color:#a3a3a0; }
   .status{ margin-top:30px; }
   .srow{ display:flex; justify-content:space-between; align-items:center; padding:12px 0;
     border-bottom:1px solid rgba(255,255,255,.07); font-size:23px; }
@@ -122,15 +105,6 @@
   .ctl small{ display:block; margin-top:5px; font-size:18px; color:#a3a3a0; }
   .ctl:active{ transform:scale(.97); }
 
-  .nav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px;
-    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; z-index:40; }
-  .nav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
-    border:1px solid transparent; letter-spacing:.04em; }
-  .nav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
-
-  .stage.portrait{ width:900px; height:1600px; }
-  .stage.portrait .topbar{ top:40px; left:44px; right:44px; }
-  .stage.portrait .topline{ top:94px; left:44px; right:44px; }
   .stage.portrait .divider{ display:none; }
   .stage.portrait .col{ left:44px; width:812px; }
   .stage.portrait .col.left{ top:118px; }
@@ -140,15 +114,13 @@
   .stage.portrait .laadregel{ margin-top:18px; font-size:23px; }
   .stage.portrait .carimg{ width:470px; max-height:180px; margin-top:12px; }
   .stage.portrait .tiles{ margin-top:16px; gap:12px; }
-  .stage.portrait .tile{ padding:16px 18px; }
-  .stage.portrait .tile .tv{ font-size:42px; margin-top:8px; }
+  .stage.portrait .tegel{ padding:16px 18px; }
+  .stage.portrait .tegel .tv{ font-size:42px; margin-top:8px; }
   .stage.portrait .status{ margin-top:14px; }
   .stage.portrait .srow{ padding:9px 0; font-size:21px; }
   .stage.portrait .controls{ margin-top:14px; }
   .stage.portrait .ctl{ padding:12px 6px; font-size:19px; }
   .stage.portrait .xp{ display:none; }
-  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
-  .stage.portrait .nav a{ font-size:19px; padding:10px 22px; }
   `;
 
   class AutobordCard extends HTMLElement {
@@ -183,9 +155,7 @@
       this._built = true;
       this._opt = {};
       var root = this.shadowRoot || this.attachShadow({ mode: "open" });
-      var navHtml = NAV.map(function (n) {
-        return '<a href="' + n[1] + '"' + (n[0] === NAV_ACTIVE ? ' class="active"' : "") + ">" + n[0] + "</a>";
-      }).join("");
+      var navHtmlStr = navHtml("Auto");
       root.innerHTML = "<style>" + CSS + "</style>" +
       '<div class="stage" id="stage">' +
         '<div class="topbar"><span class="caps" id="datum">Auto</span><span class="klok" id="klok">--:--</span></div>' +
@@ -202,10 +172,10 @@
         '<div class="col right">' +
           '<span class="caps">Onderweg</span>' +
           '<div class="tiles">' +
-            '<div class="tile"><div class="tcaps">Benzine</div><div class="tv"><span id="fuel">--</span><small> %</small></div><div class="tsub" id="fuelrange">bereik onbekend</div></div>' +
-            '<div class="tile"><div class="tcaps">Kilometerstand</div><div class="tv"><span id="odo">--</span><small> km</small></div><div class="tsub">totaal gereden</div></div>' +
-            '<div class="tile"><div class="tcaps">Olie</div><div class="tv"><span id="oil">--</span><small> %</small></div><div class="tsub">levensduur resterend</div></div>' +
-            '<div class="tile"><div class="tcaps">12V-accu</div><div class="tv"><span id="batt12">--</span><small> %</small></div><div class="tsub">startaccu</div></div>' +
+            '<div class="tegel"><div class="tcaps">Benzine</div><div class="tv"><span id="fuel">--</span><small> %</small></div><div class="tsub" id="fuelrange">bereik onbekend</div></div>' +
+            '<div class="tegel"><div class="tcaps">Kilometerstand</div><div class="tv"><span id="odo">--</span><small> km</small></div><div class="tsub">totaal gereden</div></div>' +
+            '<div class="tegel"><div class="tcaps">Olie</div><div class="tv"><span id="oil">--</span><small> %</small></div><div class="tsub">levensduur resterend</div></div>' +
+            '<div class="tegel"><div class="tcaps">12V-accu</div><div class="tv"><span id="batt12">--</span><small> %</small></div><div class="tsub">startaccu</div></div>' +
           '</div>' +
           '<div class="status">' +
             '<div class="srow"><span class="k">Slot</span><span class="v" id="vlock">Onbekend</span></div>' +
@@ -221,25 +191,10 @@
             '<div class="ctl" id="refreshctl">Vernieuw<small>gegevens ophalen</small></div>' +
           '</div>' +
         '</div>' +
-        '<div class="nav">' + navHtml + '</div>' +
+        '<div class="nav">' + navHtmlStr + '</div>' +
       '</div>';
       var hostEl = this;
-      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
-        a.addEventListener("click", function (ev) {
-          var href = a.getAttribute("href");
-          if (!href) return;
-          if (href.indexOf("/local/") === 0) return;
-          if (window.location.pathname === href) { ev.preventDefault(); return; }
-          try {
-            ev.preventDefault();
-            window.history.pushState(null, "", href);
-            var e = new Event("location-changed", { bubbles: true, composed: true });
-            e.detail = { replace: false };
-            window.dispatchEvent(e);
-            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
-          } catch (err) { window.location.href = href; }
-        });
-      });
+      koppelNav(root, this);
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "ringwrap", "ring", "soc", "range", "laadregel", "carimg",
         "fuel", "fuelrange", "odo", "oil", "batt12", "vlock", "vdoors", "vtires", "valarm", "vfresh",
@@ -263,12 +218,7 @@
       });
       this._tickClock();
       this._clockTimer = setInterval(function () { self._tickClock(); self._updateFresh(); }, 1000);
-      this._ro = new ResizeObserver(function () { self._fit(); });
-      this._ro.observe(this);
-      this._onResize = function () { self._fit(); };
-      window.addEventListener("resize", this._onResize);
-      this._fit();
-      setTimeout(function () { self._fit(); }, 300);
+      this._stopFit = startFit(this, q("stage"));
       if (this._hass) this._update();
     }
     _tickClock() {
@@ -279,19 +229,6 @@
       if (el.klok.textContent !== t) el.klok.textContent = t;
       var dt = d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
       if (el.datum.textContent !== dt) el.datum.textContent = dt;
-    }
-    _fit() {
-      var stage = this._el && this._el.stage;
-      if (!stage) return;
-      var w = this.clientWidth || window.innerWidth || 1920;
-      var h = this.clientHeight || window.innerHeight || 1200;
-      var portrait = h > w;
-      stage.classList.toggle("portrait", portrait);
-      var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
-      var s = Math.min(w / SW, h / SH);
-      stage.style.transform = "scale(" + s + ")";
-      stage.style.marginLeft = ((w - SW * s) / 2) + "px";
-      stage.style.marginTop = ((h - SH * s) / 2) + "px";
     }
     _updateFresh() {
       var el = this._el;
@@ -313,7 +250,6 @@
       if (!el) return;
       var soc = num(this._st(E.soc));
       el.soc.textContent = soc === null ? "--" : String(Math.round(soc));
-      var deg = soc === null ? 0 : Math.max(0, Math.min(100, soc)) / 100 * 360;
       var range = num(this._st(E.range));
       el.range.textContent = range === null ? "elektrisch bereik onbekend" : fmtInt(range) + " km elektrisch";
       var chgAttrs = this._attrs(E.charging);
@@ -321,7 +257,7 @@
       var laden = chgState === "CHARGING" || chgState === "IN_PROGRESS";
       el.ringwrap.className = "ringwrap" + (laden ? " laden" : "");
       var col = laden ? "#d9a441" : "rgba(217,164,65,.55)";
-      el.ring.style.background = "conic-gradient(" + col + " " + deg + "deg, rgba(255,255,255,.07) " + deg + "deg)";
+      el.ring.style.background = ringCss(soc === null ? 0 : soc, col);
 
       var plug = this._st(E.plug) || chgAttrs.plugStatus || "";
       var regel = "";
@@ -381,9 +317,8 @@
       this._updateFresh();
     }
     disconnectedCallback() {
-      if (this._ro) this._ro.disconnect();
+      if (this._stopFit) this._stopFit();
       if (this._clockTimer) clearInterval(this._clockTimer);
-      if (this._onResize) window.removeEventListener("resize", this._onResize);
     }
   }
 

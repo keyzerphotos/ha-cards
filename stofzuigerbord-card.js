@@ -17,21 +17,18 @@
           op het standaardoverzicht
    in plaats van een volledige paginalading; dat haalt de witte flits bij
    het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
-   terug op de gewone link. Zelfde wijziging op alle vijf de borden. */
+   terug op de gewone link. Zelfde wijziging op alle vijf de borden.
+   v1.1.0 (7 nov 2026, borden-eenheid blok 5): op de gedeelde
+   bord-basis.js. Eigen fontblok, NAV-array en gedeelde CSS-chunks
+   zijn weg; tegels heten nu .tegel; het chipgrijs is het systeemgrijs
+   #a3a3a0 (was #9ba1a8); de rechterkolom in portret staat op top
+   838px zoals bij Auto (was 900). Inhoud ongewijzigd. */
+import { zorgFont, navHtml, koppelNav, BASIS_CSS, startFit } from "./bord-basis.js";
+
 (function () {
   "use strict";
 
-  var FONT_ID = "familiebord-fonts";
-  if (!document.getElementById(FONT_ID)) {
-    var st = document.createElement("style");
-    st.id = FONT_ID;
-    st.textContent =
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:300;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2) format('woff2');}";
-    document.head.appendChild(st);
-  }
+  zorgFont();
 
   var E = {
     vac: "vacuum.james",
@@ -58,20 +55,8 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"], ["Eten", "/eten-bord"]];
-  var NAV_ACTIVE = "Stofzuiger";
-
-  var CSS = `
-  :host{ display:block; position:fixed; inset:0; height:100%; overflow:hidden; background:#08090b;
-    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color:#f4f4f2;
-    -webkit-font-smoothing:antialiased; }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{ position:relative; width:1920px; height:1200px; transform-origin:top left; overflow:hidden;
-    background:radial-gradient(1200px 800px at 30% 42%, #101216 0%, #08090b 62%); }
-  .caps{ font-size:21px; letter-spacing:.34em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .topbar{ position:absolute; top:56px; left:80px; right:80px; display:flex; justify-content:space-between; align-items:baseline; }
-  .klok{ font-size:30px; font-weight:300; }
-  .topline{ position:absolute; top:112px; left:80px; right:80px; height:1px; background:rgba(255,255,255,.08); }
+  var CSS = BASIS_CSS + `
+  .stage{ -webkit-font-smoothing:antialiased; }
   .divider{ position:absolute; top:170px; bottom:150px; left:960px; width:1px; background:rgba(255,255,255,.07); }
 
   .bloklabel{ display:block; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.08); }
@@ -93,15 +78,13 @@
   .gevolg.warn{ color:#e8b04b; }
 
   .tiles{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:18px; }
-  .tile{ border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:24px 26px; background:rgba(255,255,255,.02); }
-  .tile .tcaps{ font-size:19px; letter-spacing:.26em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .tile .tv{ margin-top:12px; font-size:48px; font-weight:300; line-height:1; }
-  .tile .tv small{ font-size:24px; color:#a3a3a0; }
-  .tile .tsub{ margin-top:9px; font-size:21px; color:#a3a3a0; }
+  .tegel .tv{ margin-top:12px; font-size:48px; font-weight:300; line-height:1; }
+  .tegel .tv small{ font-size:24px; color:#a3a3a0; }
+  .tegel .tsub{ margin-top:9px; font-size:21px; color:#a3a3a0; }
   .blok{ margin-top:36px; }
   .chips{ display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; }
   .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:16px 26px; font-size:20px;
-    color:#9ba1a8; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+    color:#a3a3a0; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
   .chip:active{ transform:scale(.96); }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .cdot{ width:8px; height:8px; border-radius:50%; background:#d9a441; visibility:hidden; }
@@ -115,28 +98,17 @@
   .ctl.disabled{ opacity:.45; pointer-events:none; }
   .offline{ margin-top:26px; font-size:24px; line-height:1.5; color:#d6d6d2; }
 
-  .nav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px;
-    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; z-index:40; }
-  .nav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
-    border:1px solid transparent; letter-spacing:.04em; }
-  .nav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
-
-  .stage.portrait{ width:900px; height:1600px; }
-  .stage.portrait .topbar{ top:40px; left:44px; right:44px; }
-  .stage.portrait .topline{ top:94px; left:44px; right:44px; }
   .stage.portrait .divider{ display:none; }
   .stage.portrait .col{ left:44px; width:812px; }
   .stage.portrait .col.left{ top:118px; }
-  .stage.portrait .col.right{ top:900px; }
+  .stage.portrait .col.right{ top:838px; }
   .stage.portrait .mappanel{ height:430px; margin-top:16px; }
   .stage.portrait .statusblok{ margin-top:18px; }
   .stage.portrait .statuszin{ font-size:30px; }
   .stage.portrait .tiles{ margin-top:16px; gap:12px; }
-  .stage.portrait .tile{ padding:16px 18px; }
-  .stage.portrait .tile .tv{ font-size:42px; margin-top:8px; }
+  .stage.portrait .tegel{ padding:16px 18px; }
+  .stage.portrait .tegel .tv{ font-size:42px; margin-top:8px; }
   .stage.portrait .blok{ margin-top:20px; }
-  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
-  .stage.portrait .nav a{ font-size:19px; padding:10px 18px; }
   `;
 
   class StofzuigerbordCard extends HTMLElement {
@@ -166,9 +138,7 @@
       if (this._built) return;
       this._built = true;
       var root = this.shadowRoot || this.attachShadow({ mode: "open" });
-      var navHtml = NAV.map(function (n) {
-        return '<a href="' + n[1] + '"' + (n[0] === NAV_ACTIVE ? ' class="active"' : "") + ">" + n[0] + "</a>";
-      }).join("");
+      var navHtmlStr = navHtml("Stofzuiger");
       var chipsHtml = FAN_ORDER.map(function (f) {
         return '<div class="chip" data-fan="' + f + '"><span class="cdot"></span>' + FAN_LABELS[f] + "</div>";
       }).join("");
@@ -190,9 +160,9 @@
           '<div id="online">' +
             '<span class="caps bloklabel">Laatste schoonmaak</span>' +
             '<div class="tiles">' +
-              '<div class="tile"><div class="tcaps">Batterij</div><div class="tv"><span id="tbatt">--</span><small> %</small></div><div class="tsub" id="tbattsub">accu</div></div>' +
-              '<div class="tile"><div class="tcaps">Oppervlakte</div><div class="tv"><span id="topp">--</span><small> m²</small></div><div class="tsub">schoongemaakt</div></div>' +
-              '<div class="tile"><div class="tcaps">Duur</div><div class="tv"><span id="tduur">--</span><small> min</small></div><div class="tsub">onderweg geweest</div></div>' +
+              '<div class="tegel"><div class="tcaps">Batterij</div><div class="tv"><span id="tbatt">--</span><small> %</small></div><div class="tsub" id="tbattsub">accu</div></div>' +
+              '<div class="tegel"><div class="tcaps">Oppervlakte</div><div class="tv"><span id="topp">--</span><small> m²</small></div><div class="tsub">schoongemaakt</div></div>' +
+              '<div class="tegel"><div class="tcaps">Duur</div><div class="tv"><span id="tduur">--</span><small> min</small></div><div class="tsub">onderweg geweest</div></div>' +
             '</div>' +
             '<div class="blok"><span class="caps bloklabel">Zuigstand</span><div class="chips" id="fanchips">' + chipsHtml + '</div></div>' +
             '<div class="blok"><span class="caps bloklabel">Bediening</span><div class="controls">' +
@@ -202,25 +172,10 @@
           '</div>' +
           '<div class="offline" id="offline" style="display:none">James is even niet bereikbaar.<br>De bediening staat uit tot er weer verbinding is.</div>' +
         '</div>' +
-        '<div class="nav">' + navHtml + '</div>' +
+        '<div class="nav">' + navHtmlStr + '</div>' +
       '</div>';
       var hostEl = this;
-      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
-        a.addEventListener("click", function (ev) {
-          var href = a.getAttribute("href");
-          if (!href) return;
-          if (href.indexOf("/local/") === 0) return;
-          if (window.location.pathname === href) { ev.preventDefault(); return; }
-          try {
-            ev.preventDefault();
-            window.history.pushState(null, "", href);
-            var e = new Event("location-changed", { bubbles: true, composed: true });
-            e.detail = { replace: false };
-            window.dispatchEvent(e);
-            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
-          } catch (err) { window.location.href = href; }
-        });
-      });
+      koppelNav(root, this);
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok", "mappanel", "kaartimg", "mapleeg", "kaartvers",
         "statusdot", "statuswoord", "gevolg", "online", "offline", "tbatt", "tbattsub", "topp", "tduur",
@@ -243,13 +198,17 @@
         if (self._pendMain || self._pendFan || self._flashMsg) self._update();
       }, 1000);
       this._mapTimer = setInterval(function () { self._maybeMap(); }, 60000);
-      this._ro = new ResizeObserver(function () { self._fit(); });
-      this._ro.observe(this);
-      this._onResize = function () { self._fit(); };
-      window.addEventListener("resize", this._onResize);
-      this._fit();
-      setTimeout(function () { self._fit(); }, 300);
+      this._stopFit = startFit(this, q("stage"));
       if (this._hass) { this._update(); this._maybeMap(); }
+    }
+    _tickClock() {
+      var el = this._el;
+      if (!el || !el.klok) return;
+      var d = new Date();
+      var t = d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+      if (el.klok.textContent !== t) el.klok.textContent = t;
+      var dt = d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
+      if (el.datum.textContent !== dt) el.datum.textContent = dt;
     }
     _tickClock() {
       var el = this._el;
@@ -423,10 +382,9 @@
         }).catch(function () { /* kaart komt later */ });
     }
     disconnectedCallback() {
-      if (this._ro) this._ro.disconnect();
+      if (this._stopFit) this._stopFit();
       if (this._clockTimer) clearInterval(this._clockTimer);
       if (this._mapTimer) clearInterval(this._mapTimer);
-      if (this._onResize) window.removeEventListener("resize", this._onResize);
     }
   }
 
