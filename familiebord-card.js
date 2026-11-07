@@ -65,21 +65,23 @@
           daarmee weg. Ook zet de kaart overscroll-behavior uit op de
           paginaroot, tegen omlaag-veeg-verversen vanuit de webpagina zelf;
           de pull-to-refresh van Kiosk Satellite zelf zit daarboven en kan
-          een kaart niet tegenhouden (die moet in KS uit). */
+          een kaart niet tegenhouden (die moet in KS uit).
+   v1.17 (7 nov 2026, borden-eenheid blok 4): genormaliseerd op de
+   gedeelde bord-basis.js. FBInter en het eigen fontblok verdwijnen
+   (basis laadt Inter, vastgepind); tokens van dialect A gaan naar de
+   systeemwaarden (labels .34em/#a3a3a0, marges 80, topline 112, gloed
+   30%/42%); de navigatie is de gegenereerde gedeelde NAV i.p.v. de
+   hard gecodeerde .pnav; de ring spreekt het gradendialect van de
+   basis (ringCss, start boven, rustspoor .07) i.p.v. procenten met
+   from -90 graden; sleepbediening en glow blijven. Podium-schaal via
+   startFit uit de basis. De extra fit op 1200 ms vervalt: de
+   ResizeObserver van startFit dekt elke maatwijziging al af. */
+import { zorgFont, navHtml, koppelNav, ringCss, BASIS_CSS, startFit } from "./bord-basis.js";
+
 (function () {
   "use strict";
 
-  var FONT_ID = "familiebord-fonts";
-  if (!document.getElementById(FONT_ID)) {
-    var st = document.createElement("style");
-    st.id = FONT_ID;
-    st.textContent =
-      "@font-face{font-family:'FBInter';src:url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.woff2') format('woff2');font-weight:300}" +
-      "@font-face{font-family:'FBInter';src:url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2') format('woff2');font-weight:400}" +
-      "@font-face{font-family:'FBInter';src:url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff2') format('woff2');font-weight:500}" +
-      "@font-face{font-family:'FBInter';src:url('https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2') format('woff2');font-weight:600}";
-    document.head.appendChild(st);
-  }
+  zorgFont();
 
   var COND_NL = {
     "sunny": "Zonnig", "clear-night": "Helder", "cloudy": "Bewolkt",
@@ -96,69 +98,54 @@
     "windy": "Wind", "windy-variant": "Wind", "exceptional": "Extreem"
   };
 
-  var CSS = `
-  :host{ display:block; position:fixed; inset:0; width:100%; height:100%; }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{
-    position:relative; width:1920px; height:1200px; transform-origin: top left;
-    font-family:'FBInter','Inter','Segoe UI',Roboto,Arial,sans-serif;
-    background: radial-gradient(1200px 800px at 50% 30%, #0e1013, #08090b 70%);
-    color:#f4f4f2; overflow:hidden; -webkit-font-smoothing:antialiased;
-  }
+  var CSS = BASIS_CSS + `
+  .stage{ overflow:hidden; -webkit-font-smoothing:antialiased; }
   .stage.night{ filter:brightness(.72); }
-  .caps{ text-transform:uppercase; letter-spacing:.22em; font-size:20px; font-weight:500; color:#9ba1a8; }
-  .topbar{ position:absolute; top:52px; left:96px; right:96px; display:flex; justify-content:space-between; align-items:baseline; }
-  .topbar .brand{ color:#6d7278; } .topbar .brand b{ color:#9ba1a8; font-weight:500; }
-  .topline{ position:absolute; top:104px; left:96px; right:96px; height:1px; background:rgba(255,255,255,.08); }
-  .left{ position:absolute; left:96px; top:200px; width:600px; }
+  .topbar .brand{ color:#6d7278; } .topbar .brand b{ color:#a3a3a0; font-weight:500; }
+  .left{ position:absolute; left:80px; top:200px; width:600px; }
   .clock{ font-size:172px; font-weight:300; letter-spacing:-.01em; line-height:1; }
   .weather{ margin-top:56px; display:flex; align-items:flex-start; gap:28px; }
   .weather .temp{ font-size:88px; font-weight:300; line-height:1; white-space:nowrap; }
   .weather .cond{ padding-top:10px; }
   .weather .cond .word{ font-size:34px; font-weight:400; }
-  .weather .cond .sub{ margin-top:8px; font-size:21px; color:#9ba1a8; line-height:1.45; }
+  .weather .cond .sub{ margin-top:8px; font-size:21px; color:#a3a3a0; line-height:1.45; }
   .hours{ margin-top:52px; display:flex; border-top:1px solid rgba(255,255,255,.08); padding-top:28px; }
   .hour{ flex:1; } .hour .h{ font-size:20px; color:#6d7278; letter-spacing:.08em; }
   .hour .t{ font-size:30px; font-weight:400; margin-top:8px; }
-  .hour .c{ font-size:19px; color:#9ba1a8; margin-top:4px; }
+  .hour .c{ font-size:19px; color:#a3a3a0; margin-top:4px; }
   .hero{ position:absolute; left:50%; top:545px; transform:translate(-50%,-50%); text-align:center; }
   .hero .above{ margin-bottom:34px; }
   .ringwrap{ position:relative; width:452px; height:452px; margin:0 auto; touch-action:none; cursor:pointer; }
   .ringwrap.drag .ring{ box-shadow:0 0 120px rgba(217,164,65,.25); }
   .ring{ position:absolute; inset:0; border-radius:50%; box-shadow:0 0 90px rgba(217,164,65,.10); }
-  .ringdisc{ position:absolute; inset:24px; border-radius:50%; background:#0b0c0e;
+  .ringdisc{ position:absolute; inset:24px; border-radius:50%; background:#0b0c0f;
     display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .ringdisc .now{ font-size:104px; font-weight:300; line-height:1; }
-  .ringdisc .now sup{ font-size:44px; color:#9ba1a8; }
-  .ringdisc .set{ margin-top:14px; font-size:23px; color:#9ba1a8; }
+  .ringdisc .now sup{ font-size:44px; color:#a3a3a0; }
+  .ringdisc .set{ margin-top:14px; font-size:23px; color:#a3a3a0; }
   .ringdisc .set b{ color:#f4f4f2; font-weight:500; }
-  .hero .below{ margin-top:32px; font-size:21px; color:#9ba1a8; }
+  .hero .below{ margin-top:32px; font-size:21px; color:#a3a3a0; }
   .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:#d9a441; }
   .hero .below .dot{ margin-right:10px; vertical-align:2px; }
-  .right{ position:absolute; right:96px; top:200px; width:430px; }
+  .right{ position:absolute; right:80px; top:200px; width:430px; }
   .blocklabel{ display:flex; align-items:baseline; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,.08); padding-bottom:16px; }
   .blocklabel .add{ font-size:20px; color:#6d7278; cursor:pointer; }
   .todoitem{ display:flex; align-items:center; gap:16px; padding:17px 0 3px; font-size:24px; font-weight:300; cursor:pointer; }
   .todoitem .box{ width:26px; height:26px; border:2px solid rgba(255,255,255,.35); border-radius:7px; flex:none; }
-  .todo-empty{ padding:26px 0 6px; font-size:24px; color:#9ba1a8; font-weight:300; }
+  .todo-empty{ padding:26px 0 6px; font-size:24px; color:#a3a3a0; font-weight:300; }
   .status{ margin-top:58px; }
   .srow{ display:flex; align-items:center; justify-content:space-between; padding:21px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-  .srow .k{ display:flex; align-items:center; gap:14px; font-size:22px; color:#9ba1a8; }
+  .srow .k{ display:flex; align-items:center; gap:14px; font-size:22px; color:#a3a3a0; }
   .srow .v{ font-size:24px; font-weight:400; }
-  .srow .v span{ color:#9ba1a8; font-size:21px; }
-  .chips{ position:absolute; left:96px; right:96px; bottom:128px; display:flex; justify-content:center; gap:16px; }
-  .pnav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px; z-index:4;
-    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; }
-  .pnav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
-    border:1px solid transparent; letter-spacing:.04em; }
-  .pnav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
-  .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#9ba1a8; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
+  .srow .v span{ color:#a3a3a0; font-size:21px; }
+  .chips{ position:absolute; left:80px; right:80px; bottom:128px; display:flex; justify-content:center; gap:16px; }
+  .chip{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:17px 30px; font-size:21px; color:#a3a3a0; display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; }
   .chip[data-room]:active{ transform:scale(.96); }
   .ringrow{ display:flex; align-items:center; justify-content:center; gap:30px; }
   .stepbtn{ width:70px; height:70px; flex:0 0 auto; border-radius:50%; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.03); color:#e8e6e1; font-size:36px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; }
   .stepbtn:active{ transform:scale(.93); border-color:rgba(217,164,65,.65); color:#f2ead8; }
   .modes{ display:flex; gap:12px; justify-content:center; margin-top:28px; flex-wrap:wrap; }
-  .mode{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:15px 28px; font-size:20px; color:#9ba1a8; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .mode{ border:1px solid rgba(255,255,255,.13); border-radius:999px; padding:15px 28px; font-size:20px; color:#a3a3a0; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
   .mode:active{ transform:scale(.96); }
   .mode.active{ border-color:rgba(217,164,65,.55); color:#f2ead8; }
   .mode .mdot{ visibility:hidden; width:8px; height:8px; }
@@ -170,26 +157,25 @@
   .chip b{ color:#f4f4f2; font-weight:500; }
   .chip.active{ border-color:rgba(217,164,65,.55); color:#f4f4f2; }
   .chip .dot{ width:8px; height:8px; }
-  .overlay{ position:absolute; inset:0; background:rgba(4,5,6,.72); display:none; align-items:center; justify-content:center; z-index:5; }
+  .overlay{ position:absolute; inset:0; background:rgba(4,5,6,.72); display:none; align-items:center; justify-content:center; z-index:50; }
   .overlay.show{ display:flex; }
   .belcard{ width:1180px; background:#101215; border:1px solid rgba(255,255,255,.12); border-radius:28px; padding:44px 48px 40px; }
   .belhead{ display:flex; align-items:center; justify-content:space-between; }
   .belhead .t{ font-size:34px; font-weight:500; display:flex; align-items:center; gap:16px; }
   .belhead .t .dot{ width:13px; height:13px; }
-  .belhead .time{ font-size:24px; color:#9ba1a8; }
+  .belhead .time{ font-size:24px; color:#a3a3a0; }
   .belview{ margin-top:30px; height:520px; border-radius:18px; background:linear-gradient(160deg,#17191d,#0c0e10);
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; overflow:hidden; position:relative; }
   .belview img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .belview .cam{ font-size:22px; letter-spacing:.22em; color:#9ba1a8; text-transform:uppercase; }
+  .belview .cam{ font-size:22px; letter-spacing:.22em; color:#a3a3a0; text-transform:uppercase; }
   .belview .live{ font-size:20px; color:#6d7278; }
   .belbtns{ margin-top:32px; display:flex; gap:16px; justify-content:flex-end; }
   .btn{ font-size:23px; padding:18px 36px; border-radius:999px; border:1px solid rgba(255,255,255,.16); color:#f4f4f2; cursor:pointer; }
   .btn.primary{ background:#d9a441; border-color:#d9a441; color:#14100a; font-weight:600; }
 
   /* Portretstand (telefoon): rustige stapel, geen urenstrip en geen todo */
-  .stage.portrait{ width:900px; height:1600px; }
-  .stage.portrait .topbar{ top:44px; left:48px; right:48px; }
-  .stage.portrait .topline{ top:96px; left:48px; right:48px; }
+  .stage.portrait .topbar{ left:48px; right:48px; }
+  .stage.portrait .topline{ left:48px; right:48px; }
   .stage.portrait .left{ left:48px; top:140px; width:804px; }
   .stage.portrait .clock{ font-size:196px; }
   .stage.portrait .weather{ margin-top:40px; }
@@ -202,8 +188,6 @@
   .stage.portrait .status{ margin-top:0; }
   .stage.portrait .srow{ padding:14px 0; }
   .stage.portrait .chips{ left:48px; right:48px; bottom:100px; flex-wrap:wrap; }
-  .stage.portrait .pnav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
-  .stage.portrait .pnav a{ font-size:19px; padding:10px 22px; }
   .stage.portrait .belcard{ width:820px; }
   .stage.portrait .belview{ height:560px; }
   `;
@@ -263,16 +247,7 @@
       </div>
     </aside>
     <nav class="chips" id="chips"></nav>
-    <div class="pnav">
-      <a href="/familie-bord" class="active">Home</a>
-      <a href="/keuken-bord">Keuken</a>
-      <a href="/muziek-dashboard">Muziek</a>
-      <a href="/energie-bord">Energie</a>
-      <a href="/auto-bord">Auto</a>
-      <a href="/stofzuiger-bord">Stofzuiger</a>
-      <a href="/babyfoon-bord">Babyfoon</a>
-      <a href="/eten-bord">Eten</a>
-    </div>
+    <!--NAV-->
     <div class="overlay" id="overlay">
       <div class="belcard">
         <div class="belhead">
@@ -319,26 +294,10 @@
       var style = document.createElement("style");
       style.textContent = CSS;
       var wrap = document.createElement("div");
-      wrap.innerHTML = HTML;
+      wrap.innerHTML = HTML.replace("<!--NAV-->", '<div class="nav">' + navHtml("Home") + "</div>");
       root.appendChild(style);
       root.appendChild(wrap);
-      var hostEl = this;
-      Array.prototype.forEach.call(root.querySelectorAll(".pnav a"), function (a) {
-        a.addEventListener("click", function (ev) {
-          var href = a.getAttribute("href");
-          if (!href) return;
-          if (href.indexOf("/local/") === 0) return;
-          if (window.location.pathname === href) { ev.preventDefault(); return; }
-          try {
-            ev.preventDefault();
-            window.history.pushState(null, "", href);
-            var e = new Event("location-changed", { bubbles: true, composed: true });
-            e.detail = { replace: false };
-            window.dispatchEvent(e);
-            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
-          } catch (err) { window.location.href = href; }
-        });
-      });
+      koppelNav(root, this);
       this._el = {};
       var self = this;
       ["stage","dateline","clock","wtemp","wword","wsub","hours","ring","ringwrap","rnow","rset","rbelow","herolabel",
@@ -365,30 +324,11 @@
         if (v.requestFullscreen) v.requestFullscreen();
       });
       this._el.todoadd.addEventListener("click", function () { self._addTodo(); });
-      this._ro = new ResizeObserver(function () { self._fit(); });
-      this._ro.observe(this);
-      this._onResize = function () { self._fit(); };
-      window.addEventListener("resize", this._onResize);
       this._tickClock();
       this._clockTimer = setInterval(function () { self._tickClock(); }, 5000);
-      this._fit();
-      setTimeout(function () { self._fit(); }, 300);
-      setTimeout(function () { self._fit(); }, 1200);
+      this._stopFit = startFit(this, this._el.stage);
     }
     getCardSize() { return 1; }
-    _fit() {
-      var stage = this._el && this._el.stage;
-      if (!stage) return;
-      var w = this.clientWidth || window.innerWidth || 1920;
-      var h = this.clientHeight || window.innerHeight || 1200;
-      var portrait = h > w;
-      stage.classList.toggle("portrait", portrait);
-      var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
-      var s = Math.min(w / SW, h / SH);
-      stage.style.transform = "scale(" + s + ")";
-      stage.style.marginLeft = ((w - SW * s) / 2) + "px";
-      stage.style.marginTop = ((h - SH * s) / 2) + "px";
-    }
     _tickClock() {
       if (!this._el || !this._el.clock) return;
       var d = new Date();
@@ -449,7 +389,7 @@
         el.rset.innerHTML = set === undefined || set === null ? "Verwarming uit" : "Ingesteld op <b>" + fmt(set) + "°</b>";
         var vis = this._drag ? this._drag.val : cur;
         var pct = vis === undefined || vis === null ? 0 : Math.max(0, Math.min(100, (vis - 10) / 20 * 100));
-        el.ring.style.background = "conic-gradient(from -90deg, #d9a441 0 " + pct + "%, rgba(255,255,255,.08) " + pct + "% 100%)";
+        el.ring.style.background = ringCss(pct);
         var heating = cl.attributes.hvac_action === "heating" || cl.state === "heat";
         el.rbelow.innerHTML = cl.state === "off"
           ? "Verwarming uit"
@@ -715,8 +655,7 @@
         }).catch(function () { /* snapshot komt later */ });
     }
     disconnectedCallback() {
-      if (this._ro) this._ro.disconnect();
-      if (this._onResize) window.removeEventListener("resize", this._onResize);
+      if (this._stopFit) this._stopFit();
       clearInterval(this._clockTimer);
       clearInterval(this._camTimer);
       clearTimeout(this._belTimer);
