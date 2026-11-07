@@ -1,4 +1,7 @@
 /*
+  Muziekbord v2.6.3 - alleen het frame: navigatiebalk op de gedeelde
+  maten en de actieve nav-staat van groen blok naar de gouden
+  familietint (borden-eenheid blok 3). Inhoud ongewijzigd.
   Muziekbord v2.6.2 - OG Rap-tegel wijst naar de eigen MA-lijst
   "OG Rap Classics" (40 losse nummers); de YouTube-mixlijst bleek uit
   mixvideo's van 100+ minuten te bestaan en is vervangen.
@@ -254,12 +257,15 @@
     transform:translate(-50%,-50%); box-shadow:0 2px 8px rgba(0,0,0,.45); left:0%; }
   .volpct{ width:62px; flex:none; text-align:right; font-size:20px; font-weight:700;
     font-variant-numeric:tabular-nums; color:#ffffff; }
-  /* Navigatiebalk, gelijk aan de andere borden, actief is hier groen */
-  .pnav{ position:absolute; left:50%; transform:translateX(-50%); bottom:26px; display:flex; gap:8px; z-index:4;
-    background:rgba(16,17,20,.85); border:1px solid rgba(255,255,255,.09); border-radius:999px; padding:7px; }
+  /* Navigatiebalk: frame gelijk aan de andere borden (borden-eenheid
+     blok 3, 7 nov 2026): bodem 30, achtergrond .88, padding 9; de
+     actieve staat is de gouden familietint, niet langer het groene
+     blok. Het Spotify-groen blijft als inhoudaccent in het bord zelf. */
+  .pnav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px; z-index:4;
+    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; }
   .pnav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
     border:1px solid transparent; }
-  .pnav a.active{ background:${GROEN}; color:#000000; font-weight:650; border-color:${GROEN}; }
+  .pnav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
   /* v2.4-proef: Spotify-appstijl (chips, rasterkaarten, hoesrij) */
   .chips{ display:flex; gap:12px; margin:20px 0 2px; flex:none; }
   .chip{ padding:13px 28px; border-radius:999px; background:#232323; color:#ffffff;

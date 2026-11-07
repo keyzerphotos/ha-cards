@@ -64,6 +64,8 @@ export var NAV = [
   ["Eten", "/eten-bord"]
 ];
 
+// Let op: geeft alleen de <a>-items terug, zonder de .nav-wikkel;
+// de kaart zet er zelf '<div class="nav">' + navHtml(x) + '</div>' omheen.
 export function navHtml(actief) {
   return NAV.map(function (n) {
     return '<a href="' + n[1] + '"' + (n[0] === actief ? ' class="active"' : "") + ">" + n[0] + "</a>";
