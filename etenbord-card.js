@@ -1,4 +1,12 @@
 /*
+  Etenbord v1.3 - (7 nov 2026, Alex' keuze na zijn fotovergelijking):
+  het bord staat nu op dezelfde 1920-schaal als de andere borden. De
+  inhoud wordt getekend op 1920 ontwerpbreedte en passend geschaald
+  (landschap: referentie 1920; portret: 900, telefoonportret: 560),
+  net als de podiumfit van de familie. Het scrollen blijft werken via
+  een maatlaag: de scrollcontainer scrollt een ongeschaalde maatdiv
+  waarvan breedte en hoogte de geschaalde inhoud exact volgen. Zelfde
+  constructie in de kookweergave (detail).
   Etenbord v1.2 - (borden-eenheid blok 6, 7 nov 2026): de iconen uit
   Mealie staan nu als omslag op de tegels, in de Vanavond-hero en in de
   kop van de kookweergave. Beeldroute: /local/eten/<slug>.webp op HA
@@ -47,8 +55,11 @@
   var CSS = `
   :host{ display:block; position:fixed; inset:0; width:100%; height:100%; }
   *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{ position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; background:#0a0b0d; color:#f2f0eb;
-    font-family:'EBInter',system-ui,sans-serif; padding:34px 44px 120px 44px; overscroll-behavior:none; }
+  .scroll{ position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; background:#0a0b0d;
+    overscroll-behavior:none; }
+  .maat{ position:relative; }
+  .stage{ position:absolute; top:0; left:0; width:1920px; transform-origin:top left; background:#0a0b0d; color:#f2f0eb;
+    font-family:'EBInter',system-ui,sans-serif; padding:34px 44px 120px 44px; }
   .kop{ display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:26px; }
   .kop h1{ font-size:44px; font-weight:800; letter-spacing:-0.5px; }
   .kop .sub{ font-size:19px; color:#a7a49c; margin-top:4px; }
@@ -97,7 +108,10 @@
   .tegel .tmeta{ margin-top:auto; font-size:16.5px; color:#f2f0eb; opacity:.62; }
   .melding{ font-size:21px; color:#a7a49c; padding:26px 4px; }
   .detail{ position:absolute; inset:0; background:#0a0b0d; z-index:6; overflow-y:auto; overscroll-behavior:none;
-    padding:30px 44px 60px 44px; display:none; color:#f5f2ea; font-family:'EBInter',system-ui,sans-serif; }
+    display:none; color:#f5f2ea; font-family:'EBInter',system-ui,sans-serif; }
+  .dmat{ position:relative; }
+  .dvlak{ position:absolute; top:0; left:0; width:1920px; transform-origin:top left;
+    padding:30px 44px 60px 44px; }
   .detail.open{ display:block; }
   .detail .dtop{ display:flex; gap:30px; align-items:flex-start; }
   .detail h2{ font-size:40px; font-weight:800; line-height:1.12; }
@@ -132,6 +146,7 @@
   `;
 
   var HTML = `
+  <div class="scroll" id="scroll"><div class="maat" id="maat">
   <div class="stage" id="stage">
     <div class="kop">
       <div>
@@ -147,7 +162,8 @@
     <div class="boek" id="boek"></div>
     <div class="melding" id="melding">Recepten laden...</div>
   </div>
-  <div class="detail" id="detail"></div>
+  </div></div>
+  <div class="detail" id="detail"><div class="dmat" id="dmat"><div class="dvlak" id="dvlak"></div></div></div>
   <nav class="pnav">
     <a href="/familie-bord">Home</a>
     <a href="/keuken-bord">Keuken</a>
@@ -236,7 +252,45 @@
       this._plan = [];
       this._zoek = "";
       this._filter = "Alles";
+      this._s = 1;
+      var schaalZelf = this;
+      this._roHost = new ResizeObserver(function () { schaalZelf._schaal(); });
+      this._roHost.observe(this);
+      this._roVlak = new ResizeObserver(function () { schaalZelf._maatHoogte(); });
+      this._roVlak.observe(root.getElementById("stage"));
+      this._roVlak2 = new ResizeObserver(function () { schaalZelf._maatHoogte(); });
+      this._roVlak2.observe(root.getElementById("dvlak"));
+      this._schaal();
       this._bezig = false;
+    }
+    _schaal() {
+      if (!this._root) return;
+      var w = this.clientWidth || 1920;
+      var h = this.clientHeight || 1200;
+      var ref = 1920;
+      if (h > w) ref = w >= 600 ? 900 : 560;
+      var s = w / ref;
+      if (!isFinite(s) || s <= 0) s = 1;
+      this._s = s;
+      var stage = this._root.getElementById("stage");
+      var maat = this._root.getElementById("maat");
+      var dvlak = this._root.getElementById("dvlak");
+      var dmat = this._root.getElementById("dmat");
+      if (stage) stage.style.transform = "scale(" + s + ")";
+      if (maat) maat.style.width = 1920 * s + "px";
+      if (dvlak) dvlak.style.transform = "scale(" + s + ")";
+      if (dmat) dmat.style.width = 1920 * s + "px";
+      this._maatHoogte();
+    }
+    _maatHoogte() {
+      if (!this._root) return;
+      var s = this._s || 1;
+      var stage = this._root.getElementById("stage");
+      var maat = this._root.getElementById("maat");
+      var dvlak = this._root.getElementById("dvlak");
+      var dmat = this._root.getElementById("dmat");
+      if (stage && maat) maat.style.height = stage.scrollHeight * s + "px";
+      if (dvlak && dmat) dmat.style.height = dvlak.scrollHeight * s + "px";
     }
     set hass(hass) {
       this._hass = hass;
@@ -328,6 +382,7 @@
       this._tekenWeek();
       this._tekenFilters();
       this._tekenBoek();
+      this._maatHoogte();
     }
     _tekenFilters() {
       var vlak = this._root.getElementById("filters");
@@ -454,11 +509,13 @@
     }
     _openRecept(recept) {
       var detail = this._root.getElementById("detail");
+      var dvlak = this._root.getElementById("dvlak");
       var self = this;
       detail.classList.add("open");
       detail.scrollTop = 0;
-      detail.innerHTML = '<button class="sluit" id="dsluit">×</button><div class="melding">Recept laden...</div>';
+      dvlak.innerHTML = '<button class="sluit" id="dsluit">×</button><div class="melding">Recept laden...</div>';
       detail.querySelector("#dsluit").addEventListener("click", function () { detail.classList.remove("open"); });
+      this._maatHoogte();
       this._service("get_recipe", { recipe_id: recept.recipe_id }).then(function (res) {
         self._tekenDetail(res.recipe || recept);
       }).catch(function () {
@@ -493,6 +550,7 @@
     }
     _tekenDetail(r) {
       var detail = this._root.getElementById("detail");
+      var dvlak = this._root.getElementById("dvlak");
       var cat = this._cat(r);
       var basis = this._basis(r);
       this._detail = { recept: r, basis: basis.aantal, aantal: basis.aantal, woord: basis.woord };
@@ -505,7 +563,7 @@
       var stappen = (r.instructions || []).map(function (s, i) {
         return '<div class="stap"><div class="nr">' + (i + 1) + '</div><div class="txt">' + esc(s.text || "") + '</div></div>';
       }).join("");
-      detail.innerHTML =
+      dvlak.innerHTML =
         '<button class="sluit" id="dsluit">×</button>' +
         '<div class="dtop">' + this._omslag(r, "domslag") +
         '<div><div class="cat">' + esc(cat) + '</div><div class="lijn"></div><h2>' + esc(r.name) + '</h2>' +
@@ -532,6 +590,7 @@
       });
       this._tekenIngredienten();
       detail.scrollTop = 0;
+      this._maatHoogte();
     }
   }
 
