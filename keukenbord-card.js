@@ -1,46 +1,18 @@
-/* Keukenbord card v1.2.6 — keukenpagina (oven + vaatwasser) in de stijl van
-   het familiebord. Twee Home Connect-apparaten naast elkaar, elk met ring,
-   chips, aan/uit + stop en statusregels. Onderaan een nav-balk
-   naar de andere Lenovo-pagina's.
-   v1.2.0: timer-rij bij de oven (min/plus) die input_number.oven_timer
-   instelt; de hetelucht-scripts lezen daar hun programmaduur uit. De rij
-   verbergt in portretstand (class xp), net als de andere extra regels.
-   v1.1.0: de 13 fabrieksprogramma's van de oven zijn vervangen door Alex'
-   persoonlijke presets (scripts script.oven_preset_*); tik = direct starten.
-   De vaatwasser houdt zijn gewone programmachips.
-   Tik-feedback is optimistisch (12 s), net als het ovenbord: de Home
-   Connect-cloud echoot de echte status pas na enkele seconden terug.
-   Host verankerd met position:fixed inset:0 (wallpanel-patroon).
-   v1.2.2: alleen de nav-balk, Stofzuiger erbij (zelfde sprong op alle
-   borden).
-   v1.2.3: de nav wisselt nu binnen de app (pushState + location-changed)
-   v1.2.5: Babyfoon in de nav (link naar de losse go2rtc-babyfoonpagina,
-          volledige paginalading i.p.v. SPA-wissel)
-   v1.2.6: Babyfoon wijst nu naar het dashboard /babyfoon-bord (iframe met
-          dezelfde pagina); de directe /local/-link landde vanuit de HA-app
-          op het standaardoverzicht
-   in plaats van een volledige paginalading; dat haalt de witte flits bij
-   het wisselen weg. Pakt de wissel niet, dan valt hij na 900 ms alsnog
-   terug op de gewone link. Zelfde wijziging op alle vijf de borden.
-   v1.2.4: audit-fix — de ovenring toont nu "Uit" als de oven uit is, net
-   als de vaatwasser. De temperatuurssensor houdt in de Home Connect-cloud
-   de waarde van de laatste rit vast (bijv. 131 graden van gisteren), en
-   die stond groot in de ring terwijl eronder "oven is uit" stond. De
-   temperatuur verschijnt pas weer als de oven aan staat of draait. */
+/* Keukenbord card v1.3.0 — keukenpagina (oven + vaatwasser).
+   v1.3.0 (7 nov 2026, borden-eenheid blok 1): gemigreerd op bord-basis.js.
+   Lettertype, tokens, navigatie, ring en podium-schaal komen nu uit de
+   gedeelde basis; de lokale kopieën (eigen fontblok onder de gedeelde
+   guard "familiebord-fonts", eigen NAV-array, eigen CSS-chunks) zijn weg.
+   Chips staan op de standaardmaat van het ontwerpsysteem (20px, 14/26)
+   en de statusregels op het gedeelde ritme (padding 12px), plan 3.4.
+   v1.2.6 en eerder: zie git-geschiedenis (oven-presets, timer-rij,
+   optimistische tikfeedback, wallpanel-host). */
+import { zorgFont, navHtml, koppelNav, ringCss, ringRustCss, BASIS_CSS, startFit } from "./bord-basis.js";
+
 (function () {
   "use strict";
 
-  var FONT_ID = "familiebord-fonts";
-  if (!document.getElementById(FONT_ID)) {
-    var st = document.createElement("style");
-    st.id = FONT_ID;
-    st.textContent =
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:300;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff2) format('woff2');}" +
-      "@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2) format('woff2');}";
-    document.head.appendChild(st);
-  }
+  zorgFont();
 
   var OVEN = {
     temp: "sensor.oven_huidige_temperatuur_in_de_oven",
@@ -127,30 +99,16 @@
     return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  var NAV = [["Home", "/familie-bord"], ["Keuken", "/keuken-bord"], ["Muziek", "/muziek-dashboard"], ["Energie", "/energie-bord"], ["Auto", "/auto-bord"], ["Stofzuiger", "/stofzuiger-bord"], ["Babyfoon", "/babyfoon-bord"], ["Eten", "/eten-bord"]];
-  var NAV_ACTIVE = "Keuken";
-
-  var CSS = `
-  :host{ display:block; position:fixed; inset:0; height:100%; overflow:hidden; background:#08090b;
-    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color:#f4f4f2;
-    -webkit-font-smoothing:antialiased; }
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  .stage{ position:relative; width:1920px; height:1200px; transform-origin:top left; overflow:hidden;
-    background:radial-gradient(1200px 800px at 30% 42%, #101216 0%, #08090b 62%); }
-  .caps{ font-size:21px; letter-spacing:.34em; text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .topbar{ position:absolute; top:56px; left:80px; right:80px; display:flex; justify-content:space-between; align-items:baseline; }
-  .klok{ font-size:30px; font-weight:300; color:#f4f4f2; }
-  .topline{ position:absolute; top:112px; left:80px; right:80px; height:1px; background:rgba(255,255,255,.08); }
+  var CSS = BASIS_CSS + `
   .divider{ position:absolute; top:170px; bottom:150px; left:960px; width:1px; background:rgba(255,255,255,.07); }
-
-  .panel{ position:absolute; top:150px; width:840px; }
+  .panel{ position:absolute; top:140px; width:840px; }
   .panel.left{ left:80px; }
   .panel.right{ left:1000px; }
   .phead{ display:flex; justify-content:space-between; align-items:center; }
   .pstatus{ font-size:24px; display:flex; align-items:center; gap:12px; }
   .dot{ width:12px; height:12px; border-radius:50%; background:#3a3d42; }
   .dot.on{ background:#d9a441; box-shadow:0 0 14px rgba(217,164,65,.8); }
-  .ringwrap{ position:relative; width:300px; height:300px; margin:12px auto 0; }
+  .ringwrap{ position:relative; width:284px; height:284px; margin:6px auto 0; }
   .ring{ position:absolute; inset:0; border-radius:50%; }
   .ringdisc{ position:absolute; inset:22px; border-radius:50%; background:#0b0c0f;
     display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 20px; }
@@ -158,15 +116,12 @@
   .ringdisc .now sup{ font-size:38px; font-weight:300; color:#d9a441; margin-left:4px; }
   .ringdisc .now.word{ font-size:52px; letter-spacing:0; }
   .ringdisc .sub{ margin-top:12px; font-size:22px; color:#a3a3a0; text-align:center; }
-  .below{ margin-top:12px; text-align:center; }
+  .below{ margin-top:8px; text-align:center; }
   .below .prog{ font-size:30px; font-weight:500; }
-  .below .meta{ margin-top:8px; font-size:22px; color:#a3a3a0; min-height:26px; }
-  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin:10px 0 4px; justify-content:center; }
-  .chipslabel{ margin-top:10px; text-align:center; font-size:17px; letter-spacing:.26em;
+  .below .meta{ margin-top:6px; font-size:22px; color:#a3a3a0; min-height:26px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin:6px 0 2px; justify-content:center; }
+  .chipslabel{ margin-top:4px; text-align:center; font-size:18px; letter-spacing:.26em;
     text-transform:uppercase; color:#a3a3a0; font-weight:500; }
-  .chip{ font-size:19px; color:#d6d6d2; border:1px solid rgba(255,255,255,.13); border-radius:999px;
-    padding:9px 16px; background:rgba(255,255,255,.025); cursor:pointer; user-select:none; }
-  .chip.active{ border-color:rgba(217,164,65,.65); color:#f4f4f2; background:rgba(217,164,65,.10); }
   .timerrow{ display:flex; align-items:center; gap:12px; margin-top:6px; }
   .timerrow .tlabel{ font-size:20px; color:#d6d6d2; margin-right:auto; }
   .timerrow .tbtn{ width:42px; height:42px; border-radius:50%; border:1px solid rgba(217,164,65,.55);
@@ -174,30 +129,13 @@
     cursor:pointer; user-select:none; background:rgba(217,164,65,.08); }
   .timerrow .tbtn:active{ transform:scale(.94); }
   .timerrow .tval{ font-size:22px; font-weight:500; min-width:100px; text-align:center; }
-  .chip:active, .ctl:active, .srow.tap:active{ transform:scale(.97); }
-  .controls{ display:flex; gap:14px; margin:10px 0 4px; }
-  .ctl{ flex:1; text-align:center; font-size:22px; padding:15px 10px; border-radius:16px; cursor:pointer; user-select:none;
-    border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.03); color:#f4f4f2; }
-  .ctl.on{ border-color:rgba(217,164,65,.65); background:rgba(217,164,65,.12); }
+  .srow.tap:active{ transform:scale(.97); }
+  .controls{ display:flex; gap:14px; margin:6px 0 4px; }
+  .ctl{ flex:1; }
   .ctl small{ display:block; margin-top:5px; font-size:18px; color:#a3a3a0; }
   .ctl.stop{ color:#e8a09a; }
-  .status{ margin-top:12px; }
-  .srow{ display:flex; justify-content:space-between; align-items:center; padding:7px 0;
-    border-bottom:1px solid rgba(255,255,255,.07); font-size:23px; }
-  .srow:last-child{ border-bottom:none; }
-  .srow .k{ color:#d6d6d2; }
-  .srow .v{ font-weight:500; }
+  .status{ margin-top:6px; }
   .srow.tap{ cursor:pointer; }
-
-  .nav{ position:absolute; left:50%; transform:translateX(-50%); bottom:30px; display:flex; gap:8px;
-    background:rgba(14,16,19,.88); border:1px solid rgba(255,255,255,.10); border-radius:999px; padding:9px; z-index:40; }
-  .nav a{ font-size:21px; color:#d6d6d2; text-decoration:none; padding:11px 30px; border-radius:999px;
-    border:1px solid transparent; letter-spacing:.04em; }
-  .nav a.active{ background:rgba(217,164,65,.14); color:#f4f4f2; border-color:rgba(217,164,65,.55); }
-
-  .stage.portrait{ width:900px; height:1600px; }
-  .stage.portrait .topbar{ top:40px; left:44px; right:44px; }
-  .stage.portrait .topline{ top:94px; left:44px; right:44px; }
   .stage.portrait .divider{ display:none; }
   .stage.portrait .panel{ width:812px; left:44px; }
   .stage.portrait .panel.left{ top:116px; }
@@ -215,8 +153,6 @@
   .stage.portrait .status{ margin-top:10px; }
   .stage.portrait .srow{ padding:7px 0; font-size:21px; }
   .stage.portrait .xp{ display:none; }
-  .stage.portrait .nav{ bottom:14px; flex-wrap:wrap; justify-content:center; width:94vw; row-gap:6px; }
-  .stage.portrait .nav a{ font-size:19px; padding:10px 22px; }
   `;
 
   function panelHTML(prefix, name) {
@@ -275,9 +211,7 @@
       this._built = true;
       this._opt = {};
       var root = this.shadowRoot || this.attachShadow({ mode: "open" });
-      var navHtml = NAV.map(function (n) {
-        return '<a href="' + n[1] + '"' + (n[0] === NAV_ACTIVE ? ' class="active"' : "") + ">" + n[0] + "</a>";
-      }).join("");
+      var navHtmlStr = navHtml("Keuken");
       root.innerHTML = "<style>" + CSS + "</style>" +
       '<div class="stage" id="stage">' +
         '<div class="topbar"><span class="caps" id="datum">Keuken</span><span class="klok" id="klok">--:--</span></div>' +
@@ -300,25 +234,9 @@
             '<div class="srow xp"><span class="k">Verbinding</span><span class="v" id="vconn">Verbonden</span></div>' +
           '</div>' +
         '</div>' +
-        '<div class="nav">' + navHtml + '</div>' +
+        '<div class="nav">' + navHtmlStr + '</div>' +
       '</div>';
-      var hostEl = this;
-      Array.prototype.forEach.call(root.querySelectorAll(".nav a"), function (a) {
-        a.addEventListener("click", function (ev) {
-          var href = a.getAttribute("href");
-          if (!href) return;
-          if (href.indexOf("/local/") === 0) return;
-          if (window.location.pathname === href) { ev.preventDefault(); return; }
-          try {
-            ev.preventDefault();
-            window.history.pushState(null, "", href);
-            var e = new Event("location-changed", { bubbles: true, composed: true });
-            e.detail = { replace: false };
-            window.dispatchEvent(e);
-            setTimeout(function () { if (hostEl.isConnected) window.location.href = href; }, 900);
-          } catch (err) { window.location.href = href; }
-        });
-      });
+      koppelNav(root, this);
       var q = function (id) { return root.getElementById(id); };
       var ids = ["stage", "datum", "klok"];
       ["o", "v"].forEach(function (p) {
@@ -358,12 +276,7 @@
 
       this._tickClock();
       this._clockTimer = setInterval(function () { self._tickClock(); }, 1000);
-      this._ro = new ResizeObserver(function () { self._fit(); });
-      this._ro.observe(this);
-      this._onResize = function () { self._fit(); };
-      window.addEventListener("resize", this._onResize);
-      this._fit();
-      setTimeout(function () { self._fit(); }, 300);
+      this._stopFit = startFit(this, q("stage"));
       if (this._hass) this._update();
     }
     _tickClock() {
@@ -374,19 +287,6 @@
       if (el.klok.textContent !== t) el.klok.textContent = t;
       var dt = d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
       if (el.datum.textContent !== dt) el.datum.textContent = dt;
-    }
-    _fit() {
-      var stage = this._el && this._el.stage;
-      if (!stage) return;
-      var w = this.clientWidth || window.innerWidth || 1920;
-      var h = this.clientHeight || window.innerHeight || 1200;
-      var portrait = h > w;
-      stage.classList.toggle("portrait", portrait);
-      var SW = portrait ? 900 : 1920, SH = portrait ? 1600 : 1200;
-      var s = Math.min(w / SW, h / SH);
-      stage.style.transform = "scale(" + s + ")";
-      stage.style.marginLeft = ((w - SW * s) / 2) + "px";
-      stage.style.marginTop = ((h - SH * s) / 2) + "px";
     }
     _renderChips(prefix, selEntity, labelFn, optKey) {
       var el = this._el, self = this;
@@ -465,7 +365,7 @@
           if (!ctx.powerOn) {
             el2[p + "now"].className = "now word";
             el2[p + "now"].textContent = "Uit";
-            el2[p + "ring"].style.background = "conic-gradient(rgba(217,164,65,.45) 0deg, rgba(255,255,255,.07) 0deg)";
+            el2[p + "ring"].style.background = ringRustCss();
             el2[p + "sub"].textContent = "oven is uit";
             return;
           }
@@ -474,9 +374,8 @@
           el2[p + "now"].className = "now";
           el2[p + "now"].innerHTML = hasTemp ? Math.round(tempRaw) + "<sup>°C</sup>" : "--";
           var pct = hasTemp ? Math.max(0, Math.min(100, tempRaw / 250 * 100)) : 0;
-          var deg = pct / 100 * 360;
           var col = ctx.running ? "#d9a441" : "rgba(217,164,65,.45)";
-          el2[p + "ring"].style.background = "conic-gradient(" + col + " " + deg + "deg, rgba(255,255,255,.07) " + deg + "deg)";
+          el2[p + "ring"].style.background = ringCss(pct, col);
           el2[p + "sub"].textContent = ctx.running ? "aan het verwarmen" : (ctx.powerOn ? "stand-by" : "oven is uit");
         }
       });
@@ -493,13 +392,12 @@
           if (ctx.running && !isNaN(ctx.prog)) {
             nowEl.className = "now";
             nowEl.textContent = Math.round(ctx.prog) + "%";
-            var deg = Math.max(0, Math.min(100, ctx.prog)) / 100 * 360;
-            el2[p + "ring"].style.background = "conic-gradient(#d9a441 " + deg + "deg, rgba(255,255,255,.07) " + deg + "deg)";
+            el2[p + "ring"].style.background = ringCss(ctx.prog);
             el2[p + "sub"].textContent = ctx.status === "pause" ? "gepauzeerd" : "aan het wassen";
           } else {
             nowEl.className = "now word";
             nowEl.textContent = !ctx.powerOn ? "Uit" : (STATUS_NL[ctx.status] || ctx.status);
-            el2[p + "ring"].style.background = "conic-gradient(rgba(217,164,65,.45) 0deg, rgba(255,255,255,.07) 0deg)";
+            el2[p + "ring"].style.background = ringRustCss();
             el2[p + "sub"].textContent = ctx.powerOn ? "programma gekozen" : "vaatwasser is uit";
           }
         }
@@ -509,9 +407,8 @@
       el.vconn.textContent = this._st(VAAT.conn) === "on" ? "Verbonden" : "Niet verbonden";
     }
     disconnectedCallback() {
-      if (this._ro) this._ro.disconnect();
+      if (this._stopFit) this._stopFit();
       if (this._clockTimer) clearInterval(this._clockTimer);
-      if (this._onResize) window.removeEventListener("resize", this._onResize);
     }
   }
 
