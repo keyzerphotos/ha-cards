@@ -1,4 +1,4 @@
-/* nachtbord-card.js v1.0 — "Nachtbord" voor de Lenovo (Kiosk Satellite).
+/* nachtbord-card.js v1.1 — "Nachtbord" voor de Lenovo (Kiosk Satellite).
    Compleet nieuw ontwerp naast de bestaande borden; deelt niets met
    bord-basis behalve de technische drager (1920x1200-podium met schaal-fit).
    Ontwerptaal (naar de Prairie Nights-post): bijna zwart marineblauw,
@@ -25,13 +25,34 @@ function zorgFont() {
   document.head.appendChild(st);
 }
 
-var KLEUR = {
-  bg: "#060B14", kaart: "#111C2C", kaart2: "#0D1624",
-  teal: "#2DD4BF", tealZacht: "rgba(45,212,191,.12)",
-  wit: "#F7FAFC", grijs: "#9DB0C4", dim: "#5C6E82",
-  lijn: "rgba(255,255,255,.05)", baan: "rgba(255,255,255,.07)",
-  amber: "#F5A623", rood: "#E5484D"
+var PALET = {
+  nacht: {
+    bg: "#060B14", gloed: "#0A1424", kaart: "#111C2C", kaart2: "#0D1624",
+    teal: "#2DD4BF", tealZacht: "rgba(45,212,191,.12)", tealRand: "rgba(45,212,191,.4)",
+    wit: "#F7FAFC", grijs: "#9DB0C4", dim: "#5C6E82",
+    lijn: "rgba(255,255,255,.05)", lijn2: "rgba(255,255,255,.09)", baan: "rgba(255,255,255,.07)",
+    vul: "rgba(255,255,255,.05)", deco: "rgba(255,255,255,.015)",
+    amber: "#F5A623", rood: "#E5484D"
+  },
+  schemer: {
+    bg: "#0B0918", gloed: "#3A2113", kaart: "#181226", kaart2: "#120D20",
+    teal: "#2DD4BF", tealZacht: "rgba(45,212,191,.12)", tealRand: "rgba(45,212,191,.4)",
+    wit: "#F7FAFC", grijs: "#A79FC4", dim: "#6E6486",
+    lijn: "rgba(255,255,255,.05)", lijn2: "rgba(255,255,255,.09)", baan: "rgba(255,255,255,.07)",
+    vul: "rgba(255,255,255,.05)", deco: "rgba(255,255,255,.015)",
+    amber: "#F5A623", rood: "#E5484D"
+  },
+  dag: {
+    bg: "#D9E7F2", gloed: "#F4FAFF", kaart: "#FFFFFF", kaart2: "#EAF2F8",
+    teal: "#0E9594", tealZacht: "rgba(14,149,148,.13)", tealRand: "rgba(14,149,148,.45)",
+    wit: "#132A3E", grijs: "#54708A", dim: "#64809C",
+    lijn: "rgba(18,40,60,.09)", lijn2: "rgba(18,40,60,.14)", baan: "rgba(18,40,60,.10)",
+    vul: "rgba(18,40,60,.06)", deco: "rgba(18,40,60,.03)",
+    amber: "#C77400", rood: "#D63A41"
+  }
 };
+var KLEUR = {};
+Object.assign(KLEUR, PALET.nacht);
 
 var ICONS = {
   thuis: '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5h4.5v-6h3v6H18V10"/>',
@@ -144,20 +165,20 @@ function veiligSet(key, val) {
   try { window.localStorage.setItem(key, val); } catch (e) { /* kiosk zonder opslag */ }
 }
 
-var CSS = `
+function cssTekst() { return `
 :host{position:fixed;inset:0;background:${KLEUR.bg};overflow:hidden;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 .stage{position:absolute;left:0;top:0;width:1920px;height:1200px;transform-origin:0 0;
-  background:radial-gradient(1300px 850px at 28% 30%, #0A1424 0%, ${KLEUR.bg} 65%);
+  background:radial-gradient(1300px 850px at 28% 30%, ${KLEUR.gloed} 0%, ${KLEUR.bg} 65%);
   color:${KLEUR.wit};font-family:'NBFont','Nunito',sans-serif;padding:40px 48px;
   display:flex;flex-direction:column;}
 .nav{display:flex;gap:14px;justify-content:center;}
 .pil{display:flex;align-items:center;gap:12px;padding:10px 22px 10px 12px;border-radius:999px;
-  background:rgba(255,255,255,.03);border:1px solid ${KLEUR.lijn};cursor:pointer;
+  background:${KLEUR.vul};border:1px solid ${KLEUR.lijn};cursor:pointer;
   font-size:21px;font-weight:600;color:${KLEUR.grijs};}
 .pil .rond{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.04);}
-.pil.aan{color:${KLEUR.wit};background:${KLEUR.tealZacht};border-color:rgba(45,212,191,.35);}
+  background:${KLEUR.vul};}
+.pil.aan{color:${KLEUR.wit};background:${KLEUR.tealZacht};border-color:${KLEUR.tealRand};}
 .pil.aan .rond{background:${KLEUR.teal};}
 .hero{margin-top:26px;height:238px;border-radius:24px;background:${KLEUR.kaart};
   border:1px solid ${KLEUR.lijn};display:flex;overflow:hidden;flex:none;}
@@ -175,7 +196,7 @@ var CSS = `
   padding:28px 30px;display:flex;flex-direction:column;justify-content:center;min-width:0;}
 .tegel.klikbaar{cursor:pointer;}
 .tegel .kop{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
-.tegel .chip{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.05);
+.tegel .chip{width:52px;height:52px;border-radius:50%;background:${KLEUR.vul};
   display:flex;align-items:center;justify-content:center;flex:none;}
 .tegel .kop .naam{font-size:21px;font-weight:700;color:${KLEUR.grijs};}
 .waarde{font-size:62px;font-weight:800;line-height:1.05;color:${KLEUR.wit};white-space:nowrap;}
@@ -186,7 +207,7 @@ var CSS = `
 .rijen{display:flex;flex-direction:column;gap:14px;}
 .rij{background:${KLEUR.kaart};border:1px solid ${KLEUR.lijn};border-radius:20px;
   padding:20px 26px;display:flex;align-items:center;gap:18px;cursor:pointer;}
-.rij .rond{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.05);
+.rij .rond{width:50px;height:50px;border-radius:50%;background:${KLEUR.vul};
   display:flex;align-items:center;justify-content:center;flex:none;}
 .rij .midden{flex:1;min-width:0;}
 .rij .titel{font-size:24px;font-weight:700;color:${KLEUR.wit};}
@@ -199,30 +220,30 @@ var CSS = `
 .rij.klein .rechts{font-size:22px;}
 .rij.klein .knop{padding:10px 18px;font-size:19px;}
 .knop{display:inline-flex;align-items:center;gap:12px;padding:16px 28px;border-radius:999px;
-  background:rgba(255,255,255,.05);border:1px solid ${KLEUR.lijn};color:${KLEUR.wit};
+  background:${KLEUR.vul};border:1px solid ${KLEUR.lijn};color:${KLEUR.wit};
   font-size:22px;font-weight:700;cursor:pointer;font-family:inherit;}
-.knop.teal{background:${KLEUR.tealZacht};border-color:rgba(45,212,191,.4);color:${KLEUR.teal};}
+.knop.teal{background:${KLEUR.tealZacht};border-color:${KLEUR.tealRand};color:${KLEUR.teal};}
 .knop:active{transform:scale(.97);}
-.rondknop{width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.05);
+.rondknop{width:92px;height:92px;border-radius:50%;background:${KLEUR.vul};
   border:1px solid ${KLEUR.lijn};display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .rondknop.teal{background:${KLEUR.teal};border-color:${KLEUR.teal};}
 .planvak{position:relative;}
 .kamervlak{position:absolute;border-radius:14px;background:${KLEUR.kaart2};
-  border:1px solid rgba(255,255,255,.09);padding:10px 12px;cursor:pointer;overflow:hidden;}
+  border:1px solid ${KLEUR.lijn2};padding:10px 12px;cursor:pointer;overflow:hidden;}
 .kamervlak .kn{font-size:18px;font-weight:700;color:${KLEUR.grijs};white-space:nowrap;}
 .kamervlak .kt{font-size:31px;font-weight:800;color:${KLEUR.wit};line-height:1.1;}
 .kamervlak .kd{font-size:15px;font-weight:600;color:${KLEUR.dim};}
-.kamervlak.warm{background:rgba(45,212,191,.13);border-color:rgba(45,212,191,.45);}
-.kamervlak.deco{cursor:default;background:rgba(255,255,255,.015);}
+.kamervlak.warm{background:${KLEUR.tealZacht};border-color:${KLEUR.tealRand};}
+.kamervlak.deco{cursor:default;background:${KLEUR.deco};}
 .vloertitel{position:absolute;font-size:19px;font-weight:800;color:${KLEUR.dim};letter-spacing:.4px;}
-.stapknop{width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.05);
+.stapknop{width:96px;height:96px;border-radius:50%;background:${KLEUR.vul};
   border:1px solid ${KLEUR.lijn};display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .stapknop:active{transform:scale(.95);}
 .foto{width:100%;height:100%;object-fit:cover;border-radius:24px;display:block;background:${KLEUR.kaart2};}
 .raster.krap .tegel{padding:22px 24px;}
 .raster.krap .waarde{font-size:50px;}
 .raster.krap .tegel{flex:1;}
-`;
+`; }
 
 class NachtbordCard extends HTMLElement {
   constructor() {
@@ -235,6 +256,7 @@ class NachtbordCard extends HTMLElement {
     this._dag = null;
     this._dagTs = 0;
     this._fotoPad = {};
+    this._faseNu = "nacht";
     this._klok = null;
   }
   setConfig(config) { this._config = config || {}; }
@@ -260,17 +282,19 @@ class NachtbordCard extends HTMLElement {
   get hass() { return this._hass; }
 
   _bouw() {
-    if (this._gebouwd) return;
-    this._gebouwd = true;
     var wortel = this.shadowRoot;
-    wortel.innerHTML = "<style>" + CSS + '</style><div class="stage" id="stage">' +
+    wortel.innerHTML = "<style>" + cssTekst() + '</style><div class="stage" id="stage">' +
       '<div class="nav" id="nav"></div><div class="hero" id="hero"></div>' +
       '<div class="inhoud" id="inhoud"></div></div>';
+    this._gebouwd = true;
     this._fit();
-    var self = this;
-    this._resizeObs = new ResizeObserver(function () { self._fit(); });
-    this._resizeObs.observe(document.documentElement);
-    wortel.addEventListener("click", function (ev) { self._klik(ev); });
+    if (!this._opgezet) {
+      this._opgezet = true;
+      var self = this;
+      this._resizeObs = new ResizeObserver(function () { self._fit(); });
+      this._resizeObs.observe(document.documentElement);
+      wortel.addEventListener("click", function (ev) { self._klik(ev); });
+    }
     this._tekenNav();
   }
   _fit() {
@@ -359,8 +383,23 @@ class NachtbordCard extends HTMLElement {
       '<div class="waarde">' + opt.waarde + "</div>" +
       (opt.zin ? '<div class="zin">' + esc(opt.zin) + "</div>" : "") + balk + "</div>";
   }
+  _fase() {
+    var zon = this._st("sun.sun");
+    var elev = zon && zon.attributes ? parseFloat(zon.attributes.elevation) : NaN;
+    if (isNaN(elev)) return this._faseNu || "nacht";
+    if (elev > 2.5) return new Date().getHours() >= 21 ? "schemer" : "dag";
+    if (elev > -4.5) return "schemer";
+    return "nacht";
+  }
   _render() {
     if (!this._hass || !this._gebouwd) return;
+    var fase = this._fase();
+    if (fase !== this._faseNu) {
+      this._faseNu = fase;
+      Object.assign(KLEUR, PALET[fase]);
+      this._bouw();
+      this._laatsteHtml = "";
+    }
     var heroEl = this.shadowRoot.getElementById("hero");
     var inhEl = this.shadowRoot.getElementById("inhoud");
     if (!heroEl || !inhEl) return;
@@ -476,7 +515,7 @@ class NachtbordCard extends HTMLElement {
       this._tegel({ naam: "James", icoon: "stofzuiger", tab: "stofzuiger", waarde: jamesAccu !== null ? getal(jamesAccu) + ' <span class="eenheid">%</span>' : "Onbekend", zin: jamesState === "docked" ? "Accu · aan het dock" : jamesState === "cleaning" ? "Accu · aan het schoonmaken" : "Accu · " + (jamesState || ""), balk: jamesAccu })
     ];
     return {
-      hero: this._hero(zin, sub, "/local/nacht/huis.webp"),
+      hero: this._hero(zin, sub, "/local/nacht/huis" + (this._faseNu === "dag" ? "-dag" : this._faseNu === "schemer" ? "-schemer" : "") + ".webp"),
       inhoud: '<div class="raster" style="grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;">' + tegels.join("") + "</div>"
     };
   }
@@ -663,7 +702,7 @@ class NachtbordCard extends HTMLElement {
       '<button class="knop teal" data-act="slot">' + icoon(afgesloten ? "slotopen" : "slot", 24, KLEUR.teal) + (afgesloten ? " Ontgrendel" : " Vergrendel") + "</button>" +
       '<button class="knop" data-act="knop" data-ent="button.' + FORD + 'request_refresh">' + icoon("ververs", 24, KLEUR.wit) + " Vernieuw gegevens</button></div>";
     return {
-      hero: this._hero(zin, "Ford Kuga · gegevens van " + geleden(this._st("sensor." + FORD + "lastrefresh") ? this._st("sensor." + FORD + "lastrefresh").last_changed : null), "/local/nacht/auto.webp"),
+      hero: this._hero(zin, "Ford Kuga · gegevens van " + geleden(this._st("sensor." + FORD + "lastrefresh") ? this._st("sensor." + FORD + "lastrefresh").last_changed : null), (this._faseNu === "dag" ? "/local/nacht/auto-dag.webp" : "/local/nacht/auto.webp")),
       inhoud: '<div style="display:flex;flex-direction:column;height:100%;">' +
         '<div class="raster" style="grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;flex:1;">' + tegels.join("") + "</div>" + knoppen + "</div>"
     };
@@ -737,7 +776,7 @@ class NachtbordCard extends HTMLElement {
       hero: this._hero(zin, "Camera's en beweging in en om het huis. Er is geen alarmsysteem in HA; dit is wat er echt gemeten wordt.", null),
       inhoud: '<div class="raster krap" style="grid-template-columns:740px 1fr 1fr 1fr;grid-template-rows:1fr 1fr 0.82fr;">' +
         '<div style="grid-row:1/4;position:relative;"><img class="foto" id="foto-voordeur" alt="">' +
-        '<div style="position:absolute;left:22px;bottom:20px;background:rgba(6,11,20,.78);color:' + KLEUR.wit +
+        '<div style="position:absolute;left:22px;bottom:20px;background:rgba(6,11,20,.78);color:#F7FAFC' +
         ';font-size:20px;font-weight:700;padding:10px 18px;border-radius:999px;">Voordeur · ' +
         (bew ? "beweging " + geleden(bew.last_changed) : "") + "</div></div>" +
         tegels.slice(0, 6).join("") +
@@ -804,7 +843,7 @@ class NachtbordCard extends HTMLElement {
       '<div class="rondknop" style="width:76px;height:76px;" data-act="media" data-ent="' + hoofd + '" data-svc="volume_up">' + icoon("plus", 30, KLEUR.wit) + "</div></div>";
     var nu = '<div class="tegel" style="flex:1;"><div style="display:flex;gap:30px;align-items:center;height:100%;">' +
       '<img id="foto-hoes" alt="" style="width:300px;height:300px;border-radius:20px;object-fit:cover;background:' + KLEUR.kaart2 + ';flex:none;">' +
-      '<div style="min-width:0;"><div class="kop" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;"><span class="chip" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;">' +
+      '<div style="min-width:0;"><div class="kop" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;"><span class="chip" style="width:52px;height:52px;border-radius:50%;background:' + KLEUR.vul + ';display:flex;align-items:center;justify-content:center;">' +
       icoon("muziek", 26, spelend ? KLEUR.teal : KLEUR.grijs) + '</span><span style="font-size:21px;font-weight:700;color:' + KLEUR.grijs + ';">Nu op de JBL Bar</span></div>' +
       '<div style="font-size:44px;font-weight:800;color:' + KLEUR.wit + ';line-height:1.15;">' + esc(titel || (spelend ? "Speelt iets" : "Niets aan")) + "</div>" +
       '<div class="zin" style="font-size:24px;">' + esc(artiest || (spelend ? "" : "Kies muziek op het Muziekbord of in de app")) + "</div>" +
