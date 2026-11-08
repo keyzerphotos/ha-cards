@@ -1,4 +1,4 @@
-/* nachtbord-card.js v1.1 — "Nachtbord" voor de Lenovo (Kiosk Satellite).
+/* nachtbord-card.js v1.2 — "Nachtbord" voor de Lenovo (Kiosk Satellite).
    Compleet nieuw ontwerp naast de bestaande borden; deelt niets met
    bord-basis behalve de technische drager (1920x1200-podium met schaal-fit).
    Ontwerptaal (naar de Prairie Nights-post): bijna zwart marineblauw,
@@ -243,6 +243,14 @@ function cssTekst() { return `
 .raster.krap .tegel{padding:22px 24px;}
 .raster.krap .waarde{font-size:50px;}
 .raster.krap .tegel{flex:1;}
+.autokaart{flex:1;background:${KLEUR.kaart};border:1px solid ${KLEUR.lijn};border-radius:24px;
+  padding:40px 48px;display:flex;gap:48px;min-height:0;}
+.autobeeld{flex:1;border-radius:20px;overflow:hidden;position:relative;background:${KLEUR.kaart2};}
+.autobeeld img{width:100%;height:100%;object-fit:cover;display:block;}
+.pil2{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;
+  background:${KLEUR.kaart};border:1px solid ${KLEUR.lijn};font-size:20px;font-weight:700;color:${KLEUR.grijs};}
+.pil2.goed{color:${KLEUR.teal};border-color:${KLEUR.tealRand};background:${KLEUR.tealZacht};}
+.pil2.warn{color:${KLEUR.amber};border-color:${KLEUR.amber};}
 `; }
 
 class NachtbordCard extends HTMLElement {
@@ -404,6 +412,7 @@ class NachtbordCard extends HTMLElement {
     var inhEl = this.shadowRoot.getElementById("inhoud");
     if (!heroEl || !inhEl) return;
     var deel = this["_tab_" + this._tab] ? this["_tab_" + this._tab]() : { hero: "", inhoud: "" };
+    heroEl.style.display = this._tab === "auto" ? "none" : "";
     var sleutel = this._tab + "|" + (this._kamer || "") + "|" + deel.hero + "|" + deel.inhoud;
     if (sleutel === this._laatsteHtml) return;
     this._laatsteHtml = sleutel;
@@ -515,7 +524,7 @@ class NachtbordCard extends HTMLElement {
       this._tegel({ naam: "James", icoon: "stofzuiger", tab: "stofzuiger", waarde: jamesAccu !== null ? getal(jamesAccu) + ' <span class="eenheid">%</span>' : "Onbekend", zin: jamesState === "docked" ? "Accu · aan het dock" : jamesState === "cleaning" ? "Accu · aan het schoonmaken" : "Accu · " + (jamesState || ""), balk: jamesAccu })
     ];
     return {
-      hero: this._hero(zin, sub, "/local/nacht/huis" + (this._faseNu === "dag" ? "-dag" : this._faseNu === "schemer" ? "-schemer" : "") + ".webp"),
+      hero: this._hero(zin, sub, "/local/nacht/huis" + (this._faseNu === "dag" ? "-dag2" : this._faseNu === "schemer" ? "-schemer" : "") + ".webp"),
       inhoud: '<div class="raster" style="grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;">' + tegels.join("") + "</div>"
     };
   }
@@ -685,27 +694,72 @@ class NachtbordCard extends HTMLElement {
     var afgesloten = slotSt === "LOCKED" || slotSt === "Locked";
     var deuren = this._s("sensor." + FORD + "doorstatus");
     var ramen = this._s("sensor." + FORD + "windowposition");
+    var aanHetLaden = laden === "CHARGING" || laden === "Charging";
     var zin = "De Kuga staat klaar.";
-    if (laden === "CHARGING" || laden === "Charging") zin = "De Kuga staat te laden" + (laadVermogen ? " met " + getal(laadVermogen, 2) + " kW." : ".");
+    if (aanHetLaden) zin = "De Kuga staat te laden" + (laadVermogen ? " met " + getal(laadVermogen, 2) + " kW." : ".");
     else if (!afgesloten) zin = "De Kuga is niet afgesloten.";
     else if (soc !== null && soc < 30) zin = "De accu van de Kuga is bijna leeg.";
-    var doel = this._s("select." + FORD + "elvehtargetcharge");
-    var tegels = [
-      this._tegel({ naam: "Accu", icoon: "accu", teal: true, waarde: soc !== null ? getal(soc) + ' <span class="eenheid">%</span>' : "Onbekend", zin: "Elektrisch bereik " + (elBereik !== null ? getal(elBereik, 1) + " km" : "onbekend") + (doel ? " · laadlimiet in de FordPass-app: " + esc(doel) + "%" : ""), balk: soc }),
-      this._tegel({ naam: "Bereik totaal", icoon: "auto", waarde: totaalBereik !== null ? getal(totaalBereik) + ' <span class="eenheid">km</span>' : "Onbekend", zin: "Op benzine en stroom samen · stand " + (getal(this._num("sensor." + FORD + "odometer")) || "?") + " km" }),
-      this._tegel({ naam: "Brandstof", icoon: "vlam", waarde: brandstof !== null ? getal(brandstof) + ' <span class="eenheid">%</span>' : "Onbekend", zin: "In de tank", balk: brandstof }),
-      this._tegel({ naam: "Sloten", icoon: afgesloten ? "slot" : "slotopen", teal: afgesloten, waarde: afgesloten ? "Afgesloten" : "Open", zin: "Deuren " + (deuren === "Closed" ? "dicht" : esc(deuren || "?")) + " · ramen " + (ramen === "Closed" ? "dicht" : esc(ramen || "?")) }),
-      this._tegel({ naam: "Stekker", icoon: "stekker", waarde: stekker === "CONNECTED" ? "Ingeplugd" : "Los", zin: laden === "CHARGING" || laden === "Charging" ? "Aan het laden" : "Niet aan het laden" }),
-      this._tegel({ naam: "12V-accu en olie", icoon: "accu", waarde: (getal(this._num("sensor." + FORD + "battery")) || "?") + ' <span class="eenheid">%</span>', zin: "Startaccu · olie op " + (getal(this._num("sensor." + FORD + "oil")) || "?") + "% van de levensduur" })
+    var doelRuw = this._s("select." + FORD + "elvehtargetcharge");
+    var doel = parseFloat(doelRuw);
+    if (isNaN(doel)) doel = null;
+    var accu12 = this._num("sensor." + FORD + "battery");
+    var olie = this._num("sensor." + FORD + "oil");
+    function pil(icoonNaam, tekst, stand) {
+      var kleur = stand === "goed" ? KLEUR.teal : stand === "warn" ? KLEUR.amber : KLEUR.grijs;
+      return '<span class="pil2' + (stand ? " " + stand : "") + '">' + icoon(icoonNaam, 20, kleur) + esc(tekst) + "</span>";
+    }
+    var pillen = [
+      pil(afgesloten ? "slot" : "slotopen", afgesloten ? "Afgesloten" : "Niet afgesloten", afgesloten ? "goed" : "warn"),
+      pil("deur", deuren === "Closed" ? "Deuren dicht" : "Deuren " + (deuren || "onbekend"), deuren === "Closed" ? "goed" : "warn"),
+      pil("kamers", ramen === "Closed" ? "Ramen dicht" : "Ramen " + (ramen || "onbekend"), ramen === "Closed" ? "goed" : "warn"),
+      pil("stekker", aanHetLaden ? "Aan het laden" : stekker === "CONNECTED" ? "Stekker ingeplugd" : "Stekker los", stekker === "CONNECTED" ? "goed" : ""),
+      pil("vlam", "Brandstof " + (brandstof !== null ? getal(brandstof) + "%" : "onbekend"), brandstof !== null && brandstof < 15 ? "warn" : ""),
+      pil("accu", "12V-accu " + (accu12 !== null ? getal(accu12) + "%" : "onbekend"), accu12 !== null && accu12 < 50 ? "warn" : ""),
+      pil("druppel", "Olie " + (olie !== null ? getal(olie) + "%" : "onbekend"), olie !== null && olie <= 20 ? "warn" : "")
     ];
-    var knoppen = '<div style="display:flex;gap:16px;margin-top:22px;">' +
-      '<button class="knop teal" data-act="slot">' + icoon(afgesloten ? "slotopen" : "slot", 24, KLEUR.teal) + (afgesloten ? " Ontgrendel" : " Vergrendel") + "</button>" +
-      '<button class="knop" data-act="knop" data-ent="button.' + FORD + 'request_refresh">' + icoon("ververs", 24, KLEUR.wit) + " Vernieuw gegevens</button></div>";
-    return {
-      hero: this._hero(zin, "Ford Kuga · gegevens van " + geleden(this._st("sensor." + FORD + "lastrefresh") ? this._st("sensor." + FORD + "lastrefresh").last_changed : null), (this._faseNu === "dag" ? "/local/nacht/auto-dag.webp" : "/local/nacht/auto.webp")),
-      inhoud: '<div style="display:flex;flex-direction:column;height:100%;">' +
-        '<div class="raster" style="grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;flex:1;">' + tegels.join("") + "</div>" + knoppen + "</div>"
-    };
+    var balkHtml = "";
+    if (soc !== null) {
+      balkHtml = '<div style="position:relative;margin-top:30px;">' +
+        '<div class="balk" style="margin-top:0;height:14px;"><i style="width:' + Math.max(0, Math.min(100, soc)) + '%"></i></div>' +
+        (doel !== null ? '<div style="position:absolute;top:-5px;bottom:-5px;left:' + Math.max(0, Math.min(100, doel)) + '%;width:3px;background:' + KLEUR.wit + ';border-radius:2px;"></div>' : "") +
+        "</div>" +
+        '<div style="display:flex;justify-content:space-between;margin-top:14px;font-size:19px;font-weight:600;color:' + KLEUR.grijs + ';">' +
+        "<span>" + (aanHetLaden ? "Aan het laden" : stekker === "CONNECTED" ? "Ingeplugd, laadt nu niet" : "Stekker los") + "</span>" +
+        (doel !== null ? "<span>Laadlimiet " + getal(doel) + "% (FordPass-app)</span>" : "") + "</div>";
+    }
+    var beeld = this._faseNu === "dag" ? "/local/nacht/auto-dag2.webp" : "/local/nacht/auto.webp";
+    var slotPil = '<span class="pil2 ' + (afgesloten ? "goed" : "warn") + '" style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(6,11,20,.78);">' +
+      icoon(afgesloten ? "slot" : "slotopen", 20, afgesloten ? KLEUR.teal : KLEUR.amber) +
+      '<span style="color:#F7FAFC;">' + (afgesloten ? "Afgesloten" : "Niet afgesloten") + "</span></span>";
+    var inhoud =
+      '<div style="display:flex;flex-direction:column;height:100%;">' +
+      '<div class="autokaart">' +
+        '<div style="width:620px;flex:none;display:flex;flex-direction:column;">' +
+          '<div style="font-size:21px;font-weight:600;color:' + KLEUR.grijs + ';">Ford Kuga · gegevens van ' +
+            geleden(this._st("sensor." + FORD + "lastrefresh") ? this._st("sensor." + FORD + "lastrefresh").last_changed : null) + "</div>" +
+          '<div style="margin-top:16px;font-size:56px;font-weight:800;line-height:1.14;color:' + KLEUR.wit + ';">' + esc(zin) + "</div>" +
+          '<div style="margin-top:auto;">' +
+            '<div style="display:flex;align-items:baseline;gap:34px;">' +
+              '<span style="font-size:150px;font-weight:300;line-height:1;color:' + KLEUR.wit + ';">' +
+                (soc !== null ? getal(soc) : "?") + '<span style="font-size:64px;font-weight:600;color:' + KLEUR.grijs + ';">%</span></span>' +
+              '<span><span style="font-size:62px;font-weight:800;color:' + KLEUR.wit + ';">' +
+                (totaalBereik !== null ? getal(totaalBereik) : "?") + '</span> <span style="font-size:30px;font-weight:700;color:' + KLEUR.grijs + ';">km</span>' +
+                '<div style="font-size:20px;font-weight:600;color:' + KLEUR.grijs + ';margin-top:4px;">totaal bereik · elektrisch ' +
+                (elBereik !== null ? getal(elBereik, 1) + " km" : "onbekend") + "</div></span>" +
+            "</div>" + balkHtml +
+          "</div>" +
+        "</div>" +
+        '<div class="autobeeld"><img src="' + beeld + '" alt="">' + slotPil + "</div>" +
+      "</div>" +
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;">' + pillen.join("") + "</div>" +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">' +
+        '<div style="display:flex;gap:16px;">' +
+          '<button class="knop teal" data-act="slot">' + icoon(afgesloten ? "slotopen" : "slot", 24, KLEUR.teal) + (afgesloten ? " Ontgrendel" : " Vergrendel") + "</button>" +
+          '<button class="knop" data-act="knop" data-ent="button.' + FORD + 'request_refresh">' + icoon("ververs", 24, KLEUR.wit) + " Vernieuw gegevens</button>" +
+        "</div>" +
+        '<div style="font-size:20px;font-weight:600;color:' + KLEUR.grijs + ';">Stand ' + (getal(this._num("sensor." + FORD + "odometer")) || "?") + " km</div>" +
+      "</div></div>";
+    return { hero: "", inhoud: inhoud };
   }
 
   /* ---------- ENERGIE ---------- */
